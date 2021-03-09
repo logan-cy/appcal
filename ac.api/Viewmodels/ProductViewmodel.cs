@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Identity;
@@ -15,6 +16,14 @@ namespace ac.api.Viewmodels
         public string Name { get; set; }
         [Required(ErrorMessage = "The Product Price field is required.")]
         public decimal Price { get; set; }
+    }
+
+    public class ProductSetViewmodel
+    {
+        public int Id { get; set; }
+        public int DivisionId { get; set; }
+        public string Name { get; set; }
+        public List<ProductViewmodel> Products { get; set; }
     }
 
     public class DivisionViewmodel

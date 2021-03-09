@@ -51,7 +51,7 @@ namespace ac.api.Controllers
         }
 
         /// <summary>
-        /// Get a list of clients indicated by the specified Company ID parameter value.
+        /// Get a list of clients filtered by the specified Company ID parameter value.
         /// </summary>
         /// <param name="companyId" type="int">The ID value of the company whose clients are to be retrieved.</param>
         [HttpGet("filter")]

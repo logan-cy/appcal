@@ -49,7 +49,7 @@ namespace ac.api.Controllers
         }
 
         /// <summary>
-        /// Get a list of divisions indicated by the specified Company ID parameter value.
+        /// Get a list of divisions filtered by the specified Company ID parameter value.
         /// </summary>
         /// <param name="companyId" type="int">The ID value of the company whose divisions are to be retrieved.</param>
         [HttpGet("filter")]

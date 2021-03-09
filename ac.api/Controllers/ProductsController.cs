@@ -50,7 +50,7 @@ namespace ac.api.Controllers
         }
 
         /// <summary>
-        /// Get a list of products indicated by the specified Division ID parameter value.
+        /// Get a list of products filtered by the specified Division ID parameter value.
         /// </summary>
         /// <param name="divisionId" type="int">The ID value of the division whose products are to be retrieved.</param>
         [HttpGet("filter")]
