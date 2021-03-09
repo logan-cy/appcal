@@ -61,7 +61,7 @@ namespace ac.api.Controllers
                 var division = await context.Companies.FindAsync(divisionId);
                 if (division == null)
                 {
-                    throw new ArgumentException($"Division with ID {divisionId} was not found.");
+                    return NotFound(new { message = $"Division with ID {divisionId} was not found." });
                 }
                 var products = await context.Products.Include(x => x.Division)
                     .Where(x => x.Division.Id == divisionId).Select(x => new ProductViewmodel
@@ -79,7 +79,7 @@ namespace ac.api.Controllers
                 var division = await context.Companies.FindAsync(divisionId);
                 if (division == null)
                 {
-                    throw new ArgumentException($"Division with ID {divisionId} was not found.");
+                    return NotFound(new { message = $"Division with ID {divisionId} was not found." });
                 }
                 _logger.LogError($"Unable to get products for division '{division.Name}'", ex);
                 return BadRequest(ex.ToString());
@@ -98,7 +98,7 @@ namespace ac.api.Controllers
                 var product = await context.Products.Include(x => x.Division).FirstOrDefaultAsync(x => x.Id == id);
                 if (product == null)
                 {
-                    throw new ArgumentException($"Product with ID {id} was not found.");
+                    return NotFound(new { message = $"Product with ID {id} was not found." });
                 }
                 var model = new ProductViewmodel
                 {
@@ -129,7 +129,7 @@ namespace ac.api.Controllers
                 var division = await context.Divisions.FindAsync(model.DivisionId);
                 if (division == null)
                 {
-                    throw new ArgumentException($"Company division with ID {model.DivisionId} was not found.");
+                    return NotFound(new { message = $"Company division with ID {model.DivisionId} was not found." });
                 }
 
                 var product = new Product
@@ -162,13 +162,13 @@ namespace ac.api.Controllers
                 var division = await context.Divisions.FindAsync(model.DivisionId);
                 if (division == null)
                 {
-                    throw new ArgumentException($"Company division with ID {model.DivisionId} was not found.");
+                    return NotFound(new { message = $"Company division with ID {model.DivisionId} was not found." });
                 }
 
                 var product = await context.Products.FindAsync(id);
                 if (product == null)
                 {
-                    throw new ArgumentException($"Product with ID {id} was not found.");
+                    return NotFound(new { message = $"Product with ID {id} was not found." });
                 }
                 product.Division = division;
                 product.Name = model.Name;
@@ -198,7 +198,7 @@ namespace ac.api.Controllers
                 var product = await context.Products.FindAsync(id);
                 if (product == null)
                 {
-                    throw new ArgumentException($"Product with ID {id} was not found.");
+                    return NotFound(new { message = $"Product with ID {id} was not found." });
                 }
 
                 context.Products.Remove(product);

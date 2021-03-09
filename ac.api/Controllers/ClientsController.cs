@@ -62,7 +62,7 @@ namespace ac.api.Controllers
                 var company = await context.Clients.FindAsync(companyId);
                 if (company == null)
                 {
-                    throw new ArgumentException($"Company with ID {companyId} was not found.");
+                    return NotFound(new { message = $"Company with ID {companyId} was not found." });
                 }
                 var divisions = await context.Clients.Include(x => x.Company)
                     .Where(x => x.Company.Id == companyId).Select(x => new ClientViewmodel
@@ -81,7 +81,7 @@ namespace ac.api.Controllers
                 var company = await context.Companies.FindAsync(companyId);
                 if (company == null)
                 {
-                    throw new ArgumentException($"Company with ID {companyId} was not found.");
+                    return NotFound(new { message = $"Company with ID {companyId} was not found." });
                 }
                 _logger.LogError($"Unable to get clients for company '{company.Name}'", ex);
                 return BadRequest(ex.ToString());
@@ -100,7 +100,7 @@ namespace ac.api.Controllers
                 var client = await context.Clients.Include(x => x.Company).FirstOrDefaultAsync(x => x.Id == id);
                 if (client == null)
                 {
-                    throw new ArgumentException($"Client with ID {id} was not found.");
+                    return NotFound(new { message = $"Client with ID {id} was not found." });
                 }
                 var model = new ClientViewmodel
                 {
@@ -132,7 +132,7 @@ namespace ac.api.Controllers
                 var company = await context.Companies.FindAsync(model.CompanyId);
                 if (company == null)
                 {
-                    throw new ArgumentException($"Company with ID {model.CompanyId} was not found.");
+                    return NotFound(new { message = $"Company with ID {model.CompanyId} was not found." });
                 }
 
                 var client = new Client
@@ -167,13 +167,13 @@ namespace ac.api.Controllers
                 var company = await context.Companies.FindAsync(model.CompanyId);
                 if (company == null)
                 {
-                    throw new ArgumentException($"Company with ID {model.CompanyId} was not found.");
+                    return NotFound(new { message = $"Company with ID {model.CompanyId} was not found." });
                 }
 
                 var client = await context.Clients.FindAsync(id);
                 if (client == null)
                 {
-                    throw new ArgumentException($"Client with ID {id} was not found.");
+                    return NotFound(new { message = $"Client with ID {id} was not found." });
                 }
                 client.Address = model.Address;
                 client.Company = company;
@@ -204,7 +204,7 @@ namespace ac.api.Controllers
                 var client = await context.Clients.FindAsync(id);
                 if (client == null)
                 {
-                    throw new ArgumentException($"Client with ID {id} was not found.");
+                    return NotFound(new { message = $"Client with ID {id} was not found." });
                 }
 
                 context.Clients.Remove(client);

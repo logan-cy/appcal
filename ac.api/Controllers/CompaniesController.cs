@@ -177,7 +177,7 @@ namespace ac.api.Controllers
                 var company = await context.Companies.FindAsync(id);
                 if (company == null)
                 {
-                    throw new ArgumentException($"Company with ID {id} was not found.");
+                    return NotFound(new { message = $"Company with ID {id} was not found." });
                 }
 
                 // Avoid possible data corruption by deleting products and divisions before deleting the company.

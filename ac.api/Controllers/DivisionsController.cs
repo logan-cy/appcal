@@ -60,7 +60,7 @@ namespace ac.api.Controllers
                 var company = await context.Companies.FindAsync(companyId);
                 if (company == null)
                 {
-                    throw new ArgumentException($"Company with ID {companyId} was not found.");
+                    return NotFound(new { message = $"Company with ID {companyId} was not found." });
                 }
                 var divisions = await context.Divisions.Include(x => x.Company)
                     .Where(x => x.Company.Id == companyId).Select(x => new DivisionViewmodel
@@ -96,7 +96,7 @@ namespace ac.api.Controllers
                 var division = await context.Divisions.Include(x => x.Company).FirstOrDefaultAsync(x => x.Id == id);
                 if (division == null)
                 {
-                    throw new ArgumentException($"Division with ID {id} was not found.");
+                    return NotFound(new { message = $"Division with ID {id} was not found." });
                 }
                 var model = new DivisionViewmodel
                 {
@@ -126,7 +126,7 @@ namespace ac.api.Controllers
                 var company = await context.Companies.FindAsync(model.CompanyId);
                 if (company == null)
                 {
-                    throw new ArgumentException($"Company with ID {model.CompanyId} was not found.");
+                    return NotFound(new { message = $"Company with ID {model.CompanyId} was not found." });
                 }
 
                 var division = new Division
@@ -158,13 +158,13 @@ namespace ac.api.Controllers
                 var company = await context.Companies.FindAsync(model.CompanyId);
                 if (company == null)
                 {
-                    throw new ArgumentException($"Company with ID {model.CompanyId} was not found.");
+                    return NotFound(new { message = $"Company with ID {model.CompanyId} was not found." });
                 }
 
                 var division = await context.Divisions.FindAsync(id);
                 if (division == null)
                 {
-                    throw new ArgumentException($"Division with ID {id} was not found.");
+                    return NotFound(new { message = $"Division with ID {id} was not found." });
                 }
                 division.Company = company;
                 division.Name = model.Name;
@@ -193,7 +193,7 @@ namespace ac.api.Controllers
                 var division = await context.Divisions.FindAsync(id);
                 if (division == null)
                 {
-                    throw new ArgumentException($"Division with ID {id} was not found.");
+                    return NotFound(new { message = $"Division with ID {id} was not found." });
                 }
 
                 // If the division is deleted before the products, there could be a risk of data corruption so clear out products first.
