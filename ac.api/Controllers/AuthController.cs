@@ -82,7 +82,8 @@ namespace ac.api.Controllers
             {
                 var user = new IdentityUser
                 {
-                    Email = model.Email
+                    Email = model.Email,
+                    UserName = model.Email
                 };
                 var result = await userManager.CreateAsync(user, model.Password);
 

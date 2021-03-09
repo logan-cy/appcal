@@ -59,7 +59,7 @@ namespace ac.api.Controllers
         {
             try
             {
-                var company = await context.Clients.FindAsync(companyId);
+                var company = await context.Companies.FindAsync(companyId);
                 if (company == null)
                 {
                     return NotFound(new { message = $"Company with ID {companyId} was not found." });
@@ -139,9 +139,11 @@ namespace ac.api.Controllers
                 {
                     Address = model.Address,
                     Company = company,
+                    Email = model.Email,
                     Id = model.Id,
                     IdNumber = model.IdNumber,
-                    Name = model.Name
+                    Name = model.Name,
+                    PhoneNumber = model.PhoneNumber
                 };
                 await context.Clients.AddAsync(client);
                 await context.SaveChangesAsync();
@@ -160,7 +162,7 @@ namespace ac.api.Controllers
         /// <param name="model" type="ClientViewmodel">The model containing the new client details.</param>
         /// <param name="id" type="int">The ID value of the client to be edited.</param>
         [HttpPost("edit")]
-        public async Task<IActionResult> Edit(ClientViewmodel model, int id)
+        public async Task<IActionResult> Edit([FromBody] ClientViewmodel model, int id)
         {
             try
             {
@@ -177,8 +179,10 @@ namespace ac.api.Controllers
                 }
                 client.Address = model.Address;
                 client.Company = company;
+                client.Email = model.Email;
                 client.IdNumber = model.IdNumber;
                 client.Name = model.Name;
+                client.PhoneNumber = model.PhoneNumber;
 
                 await context.SaveChangesAsync();
 

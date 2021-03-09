@@ -90,7 +90,7 @@ namespace ac.api.Controllers
         /// Get a single product as indicated by the specified Product ID parameter value.
         /// </summary>
         /// <param name="id" type="int">The ID value of the product to be retrieved.</param>
-        [HttpGet]
+        [HttpGet("single")]
         public async Task<IActionResult> Get(int id)
         {
             try
@@ -155,7 +155,7 @@ namespace ac.api.Controllers
         /// <param name="model" type="ProductViewmodel">The model containing the new product details.</param>
         /// <param name="id" type="int">The ID value of the product to be edited.</param>
         [HttpPost("edit")]
-        public async Task<IActionResult> Edit(ProductViewmodel model, int id)
+        public async Task<IActionResult> Edit([FromBody] ProductViewmodel model, int id)
         {
             try
             {

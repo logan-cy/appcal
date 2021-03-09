@@ -84,7 +84,7 @@ namespace ac.api.Controllers
         /// Get a single company as indicated by the specified Company ID parameter value.
         /// </summary>
         /// <param name="id" type="int">The ID value of the company to be retrieved.</param>
-        [HttpGet]
+        [HttpGet("single")]
         public async Task<IActionResult> Get(int id)
         {
             try
@@ -92,7 +92,7 @@ namespace ac.api.Controllers
                 var company = await context.Companies.FindAsync(id);
                 if (company == null)
                 {
-                    throw new ArgumentException($"Company with ID {id} was not found.");
+                    return NotFound(new { message = $"Company with ID {id} was not found." });
                 }
                 var model = new CompanyViewmodel
                 {
@@ -141,14 +141,14 @@ namespace ac.api.Controllers
         /// <param name="model" type="CompanyViewmodel">The model containing the new company details.</param>
         /// <param name="id" type="int">The ID value of the company to be edited.</param>
         [HttpPost("edit")]
-        public async Task<IActionResult> Edit(CompanyViewmodel model, int id)
+        public async Task<IActionResult> Edit([FromBody] CompanyViewmodel model, int id)
         {
             try
             {
                 var company = await context.Companies.FindAsync(id);
                 if (company == null)
                 {
-                    throw new ArgumentException($"Company with ID {id} was not found.");
+                    return NotFound(new { message = $"Company with ID {id} was not found." });
                 }
                 company.Address = model.Address;
                 company.Name = model.Name;

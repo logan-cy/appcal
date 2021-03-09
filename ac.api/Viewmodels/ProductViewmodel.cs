@@ -41,8 +41,12 @@ namespace ac.api.Viewmodels
         public int CompanyId { get; set; }
         [Required(ErrorMessage = "The Name field is required.")]
         public string Name { get; set; }
-        public string Address { get; set; }
         [Required(ErrorMessage = "The Email field is required.")]
+        public string Email { get; set; }
+        [Required(ErrorMessage = "The Phone number field is required.")]
+        public string PhoneNumber { get; set; }
+        public string Address { get; set; }
+        [Required(ErrorMessage = "The ID Number field is required.")]
         public string IdNumber { get; set; }
         public IdentityUser User { get; set; }
     }
@@ -73,15 +77,11 @@ namespace ac.api.Viewmodels
     public class PasswordResetViewmodel
     {
         [Required]
-        [JsonPropertyName("userid")]
         public string UserId { get; set; }
 
         [Required]
-        [JsonPropertyName("code")]
         public string Code { get; set; }
 
-        [Required]
-        [JsonPropertyName("password")]
         public string Password { get; set; }
     }
 }

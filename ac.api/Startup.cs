@@ -51,17 +51,6 @@ namespace ac.api
                 options.Password.RequireDigit = false;
                 options.Password.RequiredLength = 3;
             });
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options =>
-        {
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Configuration.GetSection("AppSettings:Key").Value)),
-                ValidateIssuer = false,
-                ValidateAudience = false
-            };
-        });
             services.Configure<SecurityStampValidatorOptions>(options =>
                 {
                     options.ValidationInterval = TimeSpan.Zero;

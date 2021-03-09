@@ -88,7 +88,7 @@ namespace ac.api.Controllers
         /// Get a single division as indicated by the specified Division ID parameter value.
         /// </summary>
         /// <param name="id" type="int">The ID value of the division to be retrieved.</param>
-        [HttpGet]
+        [HttpGet("single")]
         public async Task<IActionResult> Get(int id)
         {
             try
@@ -151,7 +151,7 @@ namespace ac.api.Controllers
         /// <param name="model" type="DivisionViewmodel">The model containing the new division details.</param>
         /// <param name="id" type="int">The ID value of the division to be edited.</param>
         [HttpPost("edit")]
-        public async Task<IActionResult> Edit(DivisionViewmodel model, int id)
+        public async Task<IActionResult> Edit([FromBody] DivisionViewmodel model, int id)
         {
             try
             {
