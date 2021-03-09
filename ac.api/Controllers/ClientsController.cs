@@ -92,7 +92,7 @@ namespace ac.api.Controllers
         /// Get a single client as indicated by the specified Client ID parameter value.
         /// </summary>
         /// <param name="id" type="int">The ID value of the client to be retrieved.</param>
-        [HttpGet]
+        [HttpGet("single")]
         public async Task<IActionResult> Get(int id)
         {
             try

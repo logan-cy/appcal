@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Identity;
 
 namespace ac.api.Viewmodels
@@ -48,11 +49,39 @@ namespace ac.api.Viewmodels
 
     public class LoginViewmodel
     {
+        [EmailAddress]
         [Required(ErrorMessage = "The username field is required.")]
         public string Username { get; set; }
         [Required(ErrorMessage = "The password field is required.")]
         public string Password { get; set; }
 
         public bool Remember { get; set; }
+    }
+
+    public class RegisterUserViewmodel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; }
+
+        [Required]
+        public string Name { get; set; }
+
+        [Required]
+        public string Password { get; set; }
+    }
+    public class PasswordResetViewmodel
+    {
+        [Required]
+        [JsonPropertyName("userid")]
+        public string UserId { get; set; }
+
+        [Required]
+        [JsonPropertyName("code")]
+        public string Code { get; set; }
+
+        [Required]
+        [JsonPropertyName("password")]
+        public string Password { get; set; }
     }
 }
