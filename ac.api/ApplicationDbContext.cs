@@ -10,6 +10,7 @@ namespace ac.api.Data
         public virtual DbSet<Client> Clients { get; set; }
         public virtual DbSet<Company> Companies { get; set; }
         public virtual DbSet<Division> Divisions { get; set; }
+        public virtual DbSet<Event> Events { get; set; }
         public virtual DbSet<Product> Products { get; set; }
         public virtual DbSet<ProductSet> ProductSets { get; set; }
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
