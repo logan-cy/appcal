@@ -12,39 +12,14 @@
 </div>
 
 <script>
-    window.onload = async () => {
-
-        const events = await getEvents();
-
+    document.addEventListener("DOMContentLoaded", function () {
         var calendarEl = document.getElementById('calendar');
         var calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             editable: true,
             selectable: true,
-            events: events
+            events: "http://localhost:5000/events?companyId=4"
         });
         calendar.render();
-    };
-
-    const getEvents = async () => {
-        var requestOptions = {
-            method: 'GET'
-        };
-
-        let events;
-        var promise = new Promise((resolve, reject) => {
-            fetch("http://localhost:5000/events?companyId=4", requestOptions)
-                .then(response => response.text())
-                .then(result => {
-                    console.log(result);
-                    events = result;
-                    resolve();
-                })
-                .catch(error => {
-                    console.log('error', error)
-                    reject();
-                });
-            await promise();
-            return events;
-        }
+    });
 </script>
