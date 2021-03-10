@@ -1,8 +1,9 @@
 using System;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ac.api.Models
 {
-    public class Event
+    public class CalendarEvent
     {
         public int Id { get; set; }
         public Company Company { get; set; }

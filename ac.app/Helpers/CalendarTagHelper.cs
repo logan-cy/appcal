@@ -12,7 +12,7 @@ namespace ac.api.Helpers
     {
         public int Month { get; set; }
         public int Year { get; set; }
-        public List<Event> Events { get; set; }
+        public List<CalendarEvent> Events { get; set; }
 
         public override void Process(TagHelperContext context, TagHelperOutput output)
         {
