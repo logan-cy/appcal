@@ -58,7 +58,7 @@ namespace ac.api.Controllers
         {
             try
             {
-                var division = await context.Companies.FindAsync(divisionId);
+                var division = await context.Divisions.FindAsync(divisionId);
                 if (division == null)
                 {
                     return NotFound(new { message = $"Division with ID {divisionId} was not found." });

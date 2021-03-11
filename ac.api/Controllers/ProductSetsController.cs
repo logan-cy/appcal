@@ -35,6 +35,7 @@ namespace ac.api.Controllers
             {
                 var sets = await context.ProductSets
                     .Include(x => x.Division)
+                    .Include(x => x.Division.Company)
                     .Include(x => x.Products).ToListAsync();
                 var model = new List<ProductSetViewmodel>();
 
@@ -44,9 +45,21 @@ namespace ac.api.Controllers
                     // Create a new set VM for each set in the collection.
                     var productSet = new ProductSetViewmodel
                     {
+                        Company = new CompanyViewmodel
+                        {
+                            Id = set.Division.Company.Id,
+                            Name = set.Division.Company.Name
+                        },
+                        CompanyId = set.Division.Company.Id,
+                        Division = new DivisionViewmodel
+                        {
+                            Id = set.Division.Id,
+                            Name = set.Division.Name
+                        },
                         DivisionId = set.Division.Id,
                         Id = set.Id,
-                        Name = set.Name
+                        Name = set.Name,
+                        Products = new List<ProductViewmodel>()
                     };
                     // Loop through the products and add them to the set.
                     var products = new List<ProductViewmodel>();
@@ -56,7 +69,17 @@ namespace ac.api.Controllers
                         .Include(x => x.Division).Include(x => x.Division.Company).FirstOrDefaultAsync(x => x.Id == product.Id);
                         products.Add(new ProductViewmodel
                         {
+                            Company = new CompanyViewmodel
+                            {
+                                Id = p.Division.Company.Id,
+                                Name = p.Division.Company.Name
+                            },
                             CompanyId = p.Division.Company.Id,
+                            Division = new DivisionViewmodel
+                            {
+                                Id = p.Division.Id,
+                                Name = p.Division.Name
+                            },
                             DivisionId = p.Division.Id,
                             Id = p.Id,
                             Name = p.Name,
@@ -98,9 +121,21 @@ namespace ac.api.Controllers
                     // Create a new set VM for each set in the collection.
                     var productSet = new ProductSetViewmodel
                     {
+                        Company = new CompanyViewmodel
+                        {
+                            Id = set.Division.Company.Id,
+                            Name = set.Division.Company.Name
+                        },
+                        CompanyId = set.Division.Company.Id,
+                        Division = new DivisionViewmodel
+                        {
+                            Id = set.Division.Id,
+                            Name = set.Division.Name
+                        },
                         DivisionId = set.Division.Id,
                         Id = set.Id,
-                        Name = set.Name
+                        Name = set.Name,
+                        Products = new List<ProductViewmodel>()
                     };
                     // Loop through the products and add them to the set.
                     foreach (var product in set.Products)
@@ -108,7 +143,19 @@ namespace ac.api.Controllers
                         var p = await context.Products.Include(x => x.Division).FirstOrDefaultAsync(x => x.Id == product.Id);
                         productSet.Products.Add(new ProductViewmodel
                         {
+                            Company = new CompanyViewmodel
+                            {
+                                Id = p.Division.Company.Id,
+                                Name = p.Division.Company.Name
+                            },
+                            CompanyId = p.Division.Company.Id,
+                            Division = new DivisionViewmodel
+                            {
+                                Id = p.Division.Id,
+                                Name = p.Division.Name
+                            },
                             DivisionId = p.Division.Id,
+                            Id = p.Id,
                             Name = p.Name,
                             Price = p.Price
                         });
@@ -136,7 +183,10 @@ namespace ac.api.Controllers
         {
             try
             {
-                var set = await context.ProductSets.Include(x => x.Division).Include(x => x.Products).FirstOrDefaultAsync(x => x.Id == id);
+                var set = await context.ProductSets
+                    .Include(x => x.Division)
+                    .Include(x => x.Division.Company)
+                    .Include(x => x.Products).FirstOrDefaultAsync(x => x.Id == id);
                 if (set == null)
                 {
                     return NotFound(new { message = $"Product set with ID {id} was not found." });
@@ -144,9 +194,21 @@ namespace ac.api.Controllers
 
                 var model = new ProductSetViewmodel
                 {
+                    Company = new CompanyViewmodel
+                    {
+                        Id = set.Division.Company.Id,
+                        Name = set.Division.Company.Name
+                    },
+                    CompanyId = set.Division.Company.Id,
+                    Division = new DivisionViewmodel
+                    {
+                        Id = set.Division.Id,
+                        Name = set.Division.Name
+                    },
                     DivisionId = set.Division.Id,
                     Id = set.Id,
-                    Name = set.Name
+                    Name = set.Name,
+                    Products = new List<ProductViewmodel>()
                 };
 
                 // Loop through the products and add them to the set.
@@ -155,7 +217,19 @@ namespace ac.api.Controllers
                     var p = await context.Products.Include(x => x.Division).FirstOrDefaultAsync(x => x.Id == product.Id);
                     model.Products.Add(new ProductViewmodel
                     {
+                        Company = new CompanyViewmodel
+                        {
+                            Id = p.Division.Company.Id,
+                            Name = p.Division.Company.Name
+                        },
+                        CompanyId = p.Division.Company.Id,
+                        Division = new DivisionViewmodel
+                        {
+                            Id = p.Division.Id,
+                            Name = p.Division.Name
+                        },
                         DivisionId = p.Division.Id,
+                        Id = p.Id,
                         Name = p.Name,
                         Price = p.Price
                     });

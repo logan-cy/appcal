@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using ac.api.Viewmodels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -15,7 +16,16 @@ namespace ac.app.Pages.ProductSets
     public class EditModel : PageModel
     {
         [BindProperty]
-        public CompanyViewmodel Company { get; set; }
+        public ProductSetViewmodel ProductSet { get; set; }
+
+        [BindProperty]
+        public List<int> SelectedProducts { get; set; }
+
+        public IEnumerable<SelectListItem> Companies { get; set; }
+        public bool GetCompaniesError { get; private set; }
+
+        public IEnumerable<SelectListItem> Divisions { get; set; }
+        public bool GetDivisionsError { get; private set; }
 
         private readonly ILogger<EditModel> _logger;
 
@@ -35,8 +45,16 @@ namespace ac.app.Pages.ProductSets
             {
                 if (id != null)
                 {
-                    _ = int.TryParse(id.ToString(), out int companyId);
-                    Company = await GetCompanyAsync(companyId);
+                    _ = int.TryParse(id.ToString(), out int productSetId);
+                    Companies = await GetCompaniesAsync();
+                    Divisions = await GetDivisionsAsync();
+                    ProductSet = await GetProductSetAsync(productSetId);
+
+                    SelectedProducts = new List<int>();
+                    foreach (var product in ProductSet.Products)
+                    {
+                        SelectedProducts.Add(product.Id);
+                    }
                 }
             }
             catch (Exception ex)
@@ -49,9 +67,21 @@ namespace ac.app.Pages.ProductSets
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/companies/edit?id={Company.Id}");
+                var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/productsets/edit?id={ProductSet.Id}");
 
-                var body = JsonSerializer.Serialize(Company);
+                if (ProductSet.Products == null)
+                {
+                    ProductSet.Products = new List<ProductViewmodel>();
+                }
+                foreach (var productId in SelectedProducts)
+                {
+                    ProductSet.Products.Add(new ProductViewmodel
+                    {
+                        Id = productId
+                    });
+                }
+
+                var body = JsonSerializer.Serialize(ProductSet);
                 var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
                 request.Content = content;
 
@@ -74,9 +104,9 @@ namespace ac.app.Pages.ProductSets
             }
         }
 
-        private async Task<CompanyViewmodel> GetCompanyAsync(int id)
+        private async Task<ProductSetViewmodel> GetProductSetAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies/single?id={id}");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/productsets/single?id={id}");
 
             var client = clientFactory.CreateClient();
             // LYTODO add authorization bearer token here for login.
@@ -85,15 +115,75 @@ namespace ac.app.Pages.ProductSets
             if (response.IsSuccessStatusCode)
             {
                 using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<CompanyViewmodel>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var company = result;
+                var result = await JsonSerializer.DeserializeAsync<ProductSetViewmodel>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                var set = result;
 
-                return company;
+                return set;
             }
             else
             {
                 return null;
             }
         }
+
+        #region Helpers
+        private async Task<IEnumerable<SelectListItem>> GetCompaniesAsync()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies");
+
+            var client = clientFactory.CreateClient();
+            // LYTODO add authorization bearer token here for login.
+            var response = await client.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                using var responseStream = await response.Content.ReadAsStreamAsync();
+                var result = await JsonSerializer.DeserializeAsync<List<CompanyViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                var companies = result.Select(x => new SelectListItem
+                {
+                    Text = x.Name,
+                    Value = x.Id.ToString()
+                }).ToList();
+
+                return companies;
+            }
+            else
+            {
+                GetCompaniesError = true;
+                var companies = Array.Empty<SelectListItem>();
+
+                return companies;
+            }
+        }
+
+        private async Task<IEnumerable<SelectListItem>> GetDivisionsAsync()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/divisions");
+
+            var client = clientFactory.CreateClient();
+            // LYTODO add authorization bearer token here for login.
+            var response = await client.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                using var responseStream = await response.Content.ReadAsStreamAsync();
+                var result = await JsonSerializer.DeserializeAsync<List<CompanyViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                var divisions = result.Select(x => new SelectListItem
+                {
+                    Text = x.Name,
+                    Value = x.Id.ToString()
+                }).ToList();
+
+                return divisions;
+            }
+            else
+            {
+                GetDivisionsError = true;
+                var divisions = Array.Empty<SelectListItem>();
+
+                return divisions;
+            }
+        }
+        #endregion
     }
 }

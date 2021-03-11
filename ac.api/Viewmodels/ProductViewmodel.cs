@@ -8,11 +8,11 @@ namespace ac.api.Viewmodels
     {
         public int Id { get; set; }
         public int CompanyId { get; set; }
+        public CompanyViewmodel Company { get; set; }
         [Required(ErrorMessage = "The Division ID field is required.")]
         public int DivisionId { get; set; }
-        [Required(ErrorMessage = "The Product Name field is required.")]
+        public DivisionViewmodel Division { get; set; }
         public string Name { get; set; }
-        [Required(ErrorMessage = "The Product Price field is required.")]
         public decimal Price { get; set; }
     }
 }

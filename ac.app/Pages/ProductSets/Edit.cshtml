@@ -13,21 +13,36 @@
 <div class="card bg-primary">
     <div class="card-header text-white">
         <a class="text-white" asp-page="./Index"><i class="fas fa-angle-left"></i></a>
-        &nbsp;Updating a Company
+        &nbsp;Creating a new Product Set
     </div>
     <div class="card-body bg-white">
         <form method="post">
-            <input type="hidden" asp-for="Company.Id" />
+            <input type="hidden" asp-for="ProductSet.Id" />
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
                 <label class="control-label">Name</label>
-                <input asp-for="Company.Name" class="form-control" />
-                <span asp-validation-for="Company.Name" class="text-danger"></span>
+                <input asp-for="ProductSet.Name" class="form-control" />
+                <span asp-validation-for="ProductSet.Name" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label class="control-label">Address</label>
-                <input asp-for="Company.Address" class="form-control" />
-                <span asp-validation-for="Company.Address" class="text-danger"></span>
+                <label class="control-label">Company</label>
+                <select asp-for="ProductSet.CompanyId" asp-items="Model.Companies" class="form-control">
+                    <option value="0">Please select</option>
+                </select>
+                <span asp-validation-for="ProductSet.CompanyId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label class="control-label">Division</label>
+                <select asp-for="ProductSet.DivisionId" asp-items="Model.Divisions" class="form-control">
+                    <option value="0">Please select</option>
+                </select>
+                <span asp-validation-for="ProductSet.DivisionId" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label">Products</label>
+                <div class="form-group-lg products-list">
+                </div>
             </div>
             <div class="form-group">
                 <input type="submit" value="Update" class="btn btn-primary" /> <a asp-page="Index" class="btn btn-default">Cancel</a>
@@ -35,3 +50,74 @@
         </form>
     </div>
 </div>
+
+<template id="productDiv">
+    <div class="column_2">
+        <input name="SelectedProducts" type="checkbox" value="{id}" />
+        <label class="checkbox-inline">{name}</label>
+    </div>
+</template>
+
+@section scripts {
+    <script>
+        const apiurl = "http://localhost:5000/";
+
+        $(function () {
+            const companyId = @Model.ProductSet.CompanyId;
+            const divisionId = @Model.ProductSet.DivisionId;
+            getProducts(divisionId);
+
+            $("#ProductSet_CompanyId").on("change", function () {
+                const companyId = $(this).val();
+                $("#ProductSet_DivisionId").empty();
+                $("#ProductSet_DivisionId").append("<option value='0'>Select division</option>");
+                $.getJSON(`${apiurl}divisions/filter?companyId=${companyId}`, (data) => {
+                    $.each(data, function (i, item) {
+                        $("#ProductSet_DivisionId").append(`<option value="${item.id}">${item.name}</option>`);
+                    });
+                });
+            });
+
+            $("#ProductSet_DivisionId").on("change", function () {
+                const divisionId = $(this).val();
+                var template = $("template#productDiv").html();
+                console.log(template);
+                $.getJSON(`${apiurl}products/filter?divisionId=${divisionId}`, (data) => {
+                    $.each(data, function (i, item) {
+                        let t = template;
+
+                        t = t.replace(/{id}/g, item.id);
+                        t = t.replace(/{name}/g, item.name);
+
+                        $(".products-list").append(t);
+                    });
+                });
+            });
+        });
+
+        function getProducts(divisionId) {
+            var template = $("template#productDiv").html();
+            console.log(template);
+            $.getJSON(`${apiurl}products/filter?divisionId=${divisionId}`, (data) => {
+                $.each(data, function (i, item) {
+                    let t = template;
+
+                    t = t.replace(/{id}/g, item.id);
+                    t = t.replace(/{name}/g, item.name);
+
+                    $(".products-list").append(t);
+                });
+
+                // Select selected products.
+                var selectedProducts = JSON.parse("@Html.Raw(Json.Serialize(Model.SelectedProducts))");
+                $.each(selectedProducts, function (i, id) {
+                    $("input[type=checkbox]").each(function () {
+                        if ($(this).val() == id) {
+                            $(this).prop("checked", true);
+                        }
+                    })
+                });
+            });
+        }
+    </script>
+}

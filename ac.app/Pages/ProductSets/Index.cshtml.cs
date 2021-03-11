@@ -15,7 +15,7 @@ namespace ac.app.Pages.ProductSets
     public class IndexModel : PageModel
     {
         [BindProperty]
-        public IEnumerable<CompanyViewmodel> Companies { get; set; }
+        public IEnumerable<ProductSetViewmodel> ProductSets { get; set; }
 
         private readonly ILogger<IndexModel> _logger;
 
@@ -33,17 +33,17 @@ namespace ac.app.Pages.ProductSets
         {
             try
             {
-                Companies = await GetCompaniesAsync();
+                ProductSets = await GetProductSetsAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[Companies IndexModel] OnGet failed");
+                _logger.LogError(ex, "[Product Sets IndexModel] OnGet failed");
             }
         }
 
-        private async Task<IEnumerable<CompanyViewmodel>> GetCompaniesAsync()
+        private async Task<IEnumerable<ProductSetViewmodel>> GetProductSetsAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/productsets");
 
             var client = clientFactory.CreateClient();
             // LYTODO add authorization bearer token here for login.
@@ -52,15 +52,15 @@ namespace ac.app.Pages.ProductSets
             if (response.IsSuccessStatusCode)
             {
                 using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<List<CompanyViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var companies = result.ToList();
+                var result = await JsonSerializer.DeserializeAsync<List<ProductSetViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                var sets = result.ToList();
 
-                return companies;
+                return sets;
             }
             else
             {
-                var companies = Array.Empty<CompanyViewmodel>();
-                return companies;
+                var sets = Array.Empty<ProductSetViewmodel>();
+                return sets;
             }
         }
     }

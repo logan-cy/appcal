@@ -24,6 +24,13 @@ a {
   border-color: #1861ac;
 }
 
+/* Set columns for inline checkbox lists */
+.column_2 {
+    -webkit-column-count: 2; /* Chrome, Safari, Opera */
+    -moz-column-count: 2; /* Firefox */
+    column-count: 2;
+}
+
 /* Sticky footer styles
 -------------------------------------------------- */
 html {

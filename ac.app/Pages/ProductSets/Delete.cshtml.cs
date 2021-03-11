@@ -15,7 +15,7 @@ namespace ac.app.Pages.ProductSets
     public class DeleteModel : PageModel
     {
         [BindProperty]
-        public CompanyViewmodel Company { get; set; }
+        public ProductSetViewmodel ProductSet { get; set; }
 
         private readonly ILogger<DeleteModel> _logger;
 
@@ -35,8 +35,8 @@ namespace ac.app.Pages.ProductSets
             {
                 if (id != null)
                 {
-                    _ = int.TryParse(id.ToString(), out int companyId);
-                    Company = await GetCompanyAsync(companyId);
+                    _ = int.TryParse(id.ToString(), out int productSetId);
+                    ProductSet = await GetProductSetAsync(productSetId);
                 }
             }
             catch (Exception ex)
@@ -49,20 +49,20 @@ namespace ac.app.Pages.ProductSets
         {
             try
             {
-                await DeleteCompanyAsync(Company.Id);
+                await DeleteProductSetAsync(ProductSet.Id);
 
                 return Redirect("Index");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[Companies DeleteModel] Failed to delete company");
+                _logger.LogError(ex, "[Product Set DeleteModel] Failed to delete product set");
                 return Page();
             }
         }
 
-        private async Task<CompanyViewmodel> GetCompanyAsync(int id)
+        private async Task<ProductSetViewmodel> GetProductSetAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies/single?id={id}");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/productsets/single?id={id}");
 
             var client = clientFactory.CreateClient();
             // LYTODO add authorization bearer token here for login.
@@ -71,10 +71,10 @@ namespace ac.app.Pages.ProductSets
             if (response.IsSuccessStatusCode)
             {
                 using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<CompanyViewmodel>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var company = result;
+                var result = await JsonSerializer.DeserializeAsync<ProductSetViewmodel>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                var set = result;
 
-                return company;
+                return set;
             }
             else
             {
@@ -82,9 +82,9 @@ namespace ac.app.Pages.ProductSets
             }
         }
 
-        private async Task DeleteCompanyAsync(int id)
+        private async Task DeleteProductSetAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/companies/delete?id={id}");
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/productsets/delete?id={id}");
 
             var client = clientFactory.CreateClient();
             // LYTODO add authorization bearer token here for login.
