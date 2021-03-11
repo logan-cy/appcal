@@ -22,7 +22,7 @@ namespace ac.app.Pages
     {
         private readonly ILogger<CreateModel> _logger;
 
-        public IEnumerable<SelectListItem> Companies { get; private set; }
+        public IEnumerable<SelectListItem> Companies { get; set; }
         public bool GetCompaniesError { get; private set; }
 
         [BindProperty]

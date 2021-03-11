@@ -15,7 +15,7 @@ namespace ac.app.Pages.Companies
     public class EditModel : PageModel
     {
         [BindProperty]
-        public CompanyViewmodel Company { get; private set; }
+        public CompanyViewmodel Company { get; set; }
 
         private readonly ILogger<EditModel> _logger;
 
@@ -42,6 +42,35 @@ namespace ac.app.Pages.Companies
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[Companies IndexModel] OnGet failed");
+            }
+        }
+
+        public async Task<IActionResult> OnPostAsync()
+        {
+            try
+            {
+                var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/companies/edit?id={Company.Id}");
+
+                var body = JsonSerializer.Serialize(Company);
+                var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+                request.Content = content;
+
+                var client = clientFactory.CreateClient();
+                // LYTODO add authorization bearer token here for login.
+                var response = await client.SendAsync(request);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return Redirect("Index");
+                }
+                else
+                {
+                    return Page();
+                }
+            }
+            catch (Exception)
+            {
+                return Page();
             }
         }
 

@@ -2,3 +2,37 @@
 @model ac.app.Pages.Divisions.CreateModel
 @{
 }
+<div class="text-center">
+    <h1 class="display-4">
+        <a href="http://healthimpact.health/" target="_blank">
+            <img src="/img/hi-logo.png"
+                 alt="Health Impact" />
+        </a>
+    </h1>
+</div>
+<div class="card bg-primary">
+    <div class="card-header text-white">
+        <a class="text-white" asp-page="./Index"><i class="fas fa-angle-left"></i></a>
+        &nbsp;Creating a new Division
+    </div>
+    <div class="card-body bg-white">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label class="control-label">Company</label>
+                <select asp-for="Division.CompanyId" asp-items="Model.Companies" class="form-control">
+                    <option value="0">Please select</option>
+                </select>
+                <span asp-validation-for="Division.CompanyId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label class="control-label">Name</label>
+                <input asp-for="Division.Name" class="form-control" />
+                <span asp-validation-for="Division.Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" /> <a asp-page="./Index" class="btn btn-default">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

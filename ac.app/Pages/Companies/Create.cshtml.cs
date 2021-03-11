@@ -16,7 +16,7 @@ namespace ac.app.Pages.Companies
     public class CreateModel : PageModel
     {
         [BindProperty]
-        public CompanyViewmodel Company { get; private set; }
+        public CompanyViewmodel Company { get; set; }
 
         public bool SaveCompanyError { get; private set; }
         public string SaveCompanyErrorMessage { get; private set; }

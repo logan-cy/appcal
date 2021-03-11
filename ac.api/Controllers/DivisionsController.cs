@@ -35,6 +35,12 @@ namespace ac.api.Controllers
                 var divisions = await context.Divisions.Include(x => x.Company).Select(x => new DivisionViewmodel
                 {
                     CompanyId = x.Company.Id,
+                    Company = new CompanyViewmodel
+                    {
+                        Address = x.Company.Address,
+                        Id = x.Company.Id,
+                        Name = x.Company.Name
+                    },
                     Id = x.Id,
                     Name = x.Name
                 }).ToListAsync();

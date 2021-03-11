@@ -10,32 +10,38 @@
                  alt="Health Impact" />
         </a>
     </h1>
-    <div class="row text-justify">
-        <div class="col-md-12">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Company</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in Model.Divisions)
-                    {
-                        <tr>
-                            <td>@Html.DisplayFor(modelItem => item.Name)</td>
-                            <td>@Html.DisplayFor(modelItem => item.Company.Name)</td>
-                            <td>
-                                <a class="btn btn-warning" asp-page="./Edit" asp-route-id="@item.Id">Edit</a>
-                                <a class="btn btn-danger" asp-page="./Delete" asp-route-id="@item.Id">Delete</a>
-                            </td>
-                        </tr>
+</div>
+<div class="card bg-primary">
+    <div class="card-header text-white">
+        Managing Companies
+    </div>
+    <div class="card-body bg-white">
 
-                    }
-                </tbody>
-            </table>
-        </div>
+        <nav class="navbar navbar-light bg-light">
+            <a asp-page="./Create" class="btn btn-success">Create New</a>
+        </nav>
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Company</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Divisions)
+                {
+                    <tr>
+                        <td>@Html.DisplayFor(modelItem => item.Name)</td>
+                        <td>@Html.DisplayFor(modelItem => item.Company.Name)</td>
+                        <td>
+                            <a class="btn btn-warning" asp-page="./Edit" asp-route-id="@item.Id">Edit</a>
+                            <a class="btn btn-danger" asp-page="./Delete" asp-route-id="@item.Id">Delete</a>
+                        </td>
+                    </tr>
+
+                }
+            </tbody>
+        </table>
     </div>
 </div>
-

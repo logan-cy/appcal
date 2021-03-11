@@ -15,7 +15,7 @@ namespace ac.app.Pages.Companies
     public class IndexModel : PageModel
     {
         [BindProperty]
-        public IEnumerable<CompanyViewmodel> Companies { get; private set; }
+        public IEnumerable<CompanyViewmodel> Companies { get; set; }
 
         private readonly ILogger<IndexModel> _logger;
 

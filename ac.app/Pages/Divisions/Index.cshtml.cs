@@ -15,7 +15,7 @@ namespace ac.app.Pages.Divisions
     public class IndexModel : PageModel
     {
         [BindProperty]
-        public IEnumerable<DivisionViewmodel> Divisions { get; private set; }
+        public IEnumerable<DivisionViewmodel> Divisions { get; set; }
 
         private readonly ILogger<IndexModel> _logger;
 
@@ -37,13 +37,13 @@ namespace ac.app.Pages.Divisions
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[Companies IndexModel] OnGet failed");
+                _logger.LogError(ex, "[Divisions IndexModel] OnGet failed");
             }
         }
 
         private async Task<IEnumerable<DivisionViewmodel>> GetDivisionsAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/divisions");
 
             var client = clientFactory.CreateClient();
             // LYTODO add authorization bearer token here for login.

@@ -15,7 +15,7 @@ namespace ac.app.Pages.Companies
     public class DeleteModel : PageModel
     {
         [BindProperty]
-        public CompanyViewmodel Company { get; private set; }
+        public CompanyViewmodel Company { get; set; }
 
         private readonly ILogger<DeleteModel> _logger;
 
@@ -45,18 +45,13 @@ namespace ac.app.Pages.Companies
             }
         }
 
-        public async Task<IActionResult> OnPostAsync(int? id)
+        public async Task<IActionResult> OnPostAsync()
         {
             try
             {
-                if (id != null)
-                {
-                    _ = int.TryParse(id.ToString(), out int companyId);
-                    await DeleteCompanyAsync(companyId);
+                await DeleteCompanyAsync(Company.Id);
 
-                    return Redirect("Index");
-                }
-                return Page();
+                return Redirect("Index");
             }
             catch (Exception ex)
             {
@@ -89,7 +84,7 @@ namespace ac.app.Pages.Companies
 
         private async Task DeleteCompanyAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies/single?id={id}");
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/companies/delete?id={id}");
 
             var client = clientFactory.CreateClient();
             // LYTODO add authorization bearer token here for login.
