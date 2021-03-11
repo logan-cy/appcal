@@ -1,7 +1,7 @@
 ﻿@page
-@model ac.app.Pages.Divisions.IndexModel
+@model ac.app.Pages.Products.IndexModel
 @{
-    ViewData["Title"] = "Managing Company Divisions";
+    ViewData["Title"] = "Managing Companies";
 }
 <div class="text-center">
     <h1 class="display-4">
@@ -13,7 +13,7 @@
 </div>
 <div class="card bg-primary">
     <div class="card-header text-white">
-        Managing Divisions
+        Managing Companies
     </div>
     <div class="card-body bg-white">
 
@@ -24,16 +24,16 @@
             <thead>
                 <tr>
                     <th>Name</th>
-                    <th>Company</th>
+                    <th>Address</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var item in Model.Divisions)
+                @foreach (var item in Model.Companies)
                 {
                     <tr>
                         <td>@Html.DisplayFor(modelItem => item.Name)</td>
-                        <td>@Html.DisplayFor(modelItem => item.Company.Name)</td>
+                        <td>@Html.DisplayFor(modelItem => item.Address)</td>
                         <td>
                             <a class="btn btn-warning" asp-page="./Edit" asp-route-id="@item.Id">Edit</a>
                             <a class="btn btn-danger" asp-page="./Delete" asp-route-id="@item.Id">Delete</a>
@@ -43,5 +43,6 @@
                 }
             </tbody>
         </table>
+
     </div>
 </div>

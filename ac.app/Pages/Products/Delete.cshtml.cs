@@ -10,12 +10,12 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace ac.app.Pages.Divisions
+namespace ac.app.Pages.Products
 {
     public class DeleteModel : PageModel
     {
         [BindProperty]
-        public DivisionViewmodel Division { get; set; }
+        public CompanyViewmodel Company { get; set; }
 
         private readonly ILogger<DeleteModel> _logger;
 
@@ -35,13 +35,13 @@ namespace ac.app.Pages.Divisions
             {
                 if (id != null)
                 {
-                    _ = int.TryParse(id.ToString(), out int divisionId);
-                    Division = await GetDivisionAsync(divisionId);
+                    _ = int.TryParse(id.ToString(), out int companyId);
+                    Company = await GetCompanyAsync(companyId);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[Divisions DeleteModel] OnGet failed");
+                _logger.LogError(ex, "[Companies DeleteModel] OnGet failed");
             }
         }
 
@@ -49,20 +49,20 @@ namespace ac.app.Pages.Divisions
         {
             try
             {
-                await DeleteDivisionAsync(Division.Id);
+                await DeleteCompanyAsync(Company.Id);
 
                 return Redirect("Index");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[Divisions DeleteModel] Failed to delete company");
+                _logger.LogError(ex, "[Companies DeleteModel] Failed to delete company");
                 return Page();
             }
         }
 
-        private async Task<DivisionViewmodel> GetDivisionAsync(int id)
+        private async Task<CompanyViewmodel> GetCompanyAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/divisions/delete?id={id}");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies/single?id={id}");
 
             var client = clientFactory.CreateClient();
             // LYTODO add authorization bearer token here for login.
@@ -71,10 +71,10 @@ namespace ac.app.Pages.Divisions
             if (response.IsSuccessStatusCode)
             {
                 using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<DivisionViewmodel>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var division = result;
+                var result = await JsonSerializer.DeserializeAsync<CompanyViewmodel>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                var company = result;
 
-                return division;
+                return company;
             }
             else
             {
@@ -82,9 +82,9 @@ namespace ac.app.Pages.Divisions
             }
         }
 
-        private async Task DeleteDivisionAsync(int id)
+        private async Task DeleteCompanyAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/divisions/delete?id={id}");
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/companies/delete?id={id}");
 
             var client = clientFactory.CreateClient();
             // LYTODO add authorization bearer token here for login.

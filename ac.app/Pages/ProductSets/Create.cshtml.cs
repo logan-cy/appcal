@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace ac.app.Pages.Companies
+namespace ac.app.Pages.ProductSets
 {
     public class CreateModel : PageModel
     {
@@ -61,7 +61,7 @@ namespace ac.app.Pages.Companies
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Unable to save company: {ex}", ex);
+                _logger.LogError($"Unable to save appointment: {ex}", ex);
                 SaveCompanyErrorMessage = ex.ToString();
                 SaveCompanyError = true;
 

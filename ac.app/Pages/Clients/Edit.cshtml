@@ -2,3 +2,58 @@
 @model ac.app.Pages.Clients.EditModel
 @{
 }
+<div class="text-center">
+    <h1 class="display-4">
+        <a href="http://healthimpact.health/" target="_blank">
+            <img src="/img/hi-logo.png"
+                 alt="Health Impact" />
+        </a>
+    </h1>
+</div>
+<div class="card bg-primary">
+    <div class="card-header text-white">
+        <a class="text-white" asp-page="./Index"><i class="fas fa-angle-left"></i></a>
+        &nbsp;Updating a Client
+    </div>
+    <div class="card-body bg-white">
+        <form method="post">
+            <input type="hidden" asp-for="Client.Id" />
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label class="control-label">Name</label>
+                <input asp-for="Client.Name" class="form-control" />
+                <span asp-validation-for="Client.Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label class="control-label">Company</label>
+                <select asp-for="Client.CompanyId" asp-items="Model.Companies" class="form-control">
+                    <option value="0">Please select</option>
+                </select>
+                <span asp-validation-for="Client.CompanyId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label class="control-label">Email</label>
+                <input asp-for="Client.Email" class="form-control" />
+                <span asp-validation-for="Client.Email" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label class="control-label">Phone Number</label>
+                <input asp-for="Client.PhoneNumber" class="form-control" />
+                <span asp-validation-for="Client.PhoneNumber" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label class="control-label">ID Number</label>
+                <input asp-for="Client.IdNumber" class="form-control" />
+                <span asp-validation-for="Client.IdNumber" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label class="control-label">Address</label>
+                <input asp-for="Client.Address" class="form-control" />
+                <span asp-validation-for="Client.Address" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Update" class="btn btn-primary" /> <a asp-page="Index" class="btn btn-default">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

@@ -10,12 +10,12 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace ac.app.Pages.Clients
+namespace ac.app.Pages.Products
 {
     public class IndexModel : PageModel
     {
         [BindProperty]
-        public IEnumerable<ClientViewmodel> Clients { get; set; }
+        public IEnumerable<CompanyViewmodel> Companies { get; set; }
 
         private readonly ILogger<IndexModel> _logger;
 
@@ -33,17 +33,17 @@ namespace ac.app.Pages.Clients
         {
             try
             {
-                Clients = await GetClientsAsync();
+                Companies = await GetCompaniesAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[Clients IndexModel] OnGet failed");
+                _logger.LogError(ex, "[Companies IndexModel] OnGet failed");
             }
         }
 
-        private async Task<IEnumerable<ClientViewmodel>> GetClientsAsync()
+        private async Task<IEnumerable<CompanyViewmodel>> GetCompaniesAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/clients");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies");
 
             var client = clientFactory.CreateClient();
             // LYTODO add authorization bearer token here for login.
@@ -52,15 +52,15 @@ namespace ac.app.Pages.Clients
             if (response.IsSuccessStatusCode)
             {
                 using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<List<ClientViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var clients = result.ToList();
+                var result = await JsonSerializer.DeserializeAsync<List<CompanyViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                var companies = result.ToList();
 
-                return clients;
+                return companies;
             }
             else
             {
-                var clients = Array.Empty<ClientViewmodel>();
-                return clients;
+                var companies = Array.Empty<CompanyViewmodel>();
+                return companies;
             }
         }
     }

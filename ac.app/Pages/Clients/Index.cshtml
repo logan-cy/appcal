@@ -1,4 +1,57 @@
 ﻿@page
 @model ac.app.Pages.Clients.IndexModel
 @{
+    ViewData["Title"] = "Managing Companies";
 }
+<div class="text-center">
+    <h1 class="display-4">
+        <a href="http://healthimpact.health/" target="_blank">
+            <img src="/img/hi-logo.png"
+                 alt="Health Impact" />
+        </a>
+    </h1>
+</div>
+<div class="card bg-primary">
+    <div class="card-header text-white">
+        Managing Clients
+    </div>
+    <div class="card-body bg-white">
+
+        <nav class="navbar navbar-light bg-light">
+            <a asp-page="./Create" class="btn btn-success">Create New</a>
+        </nav>
+        <table class="table table-borderless">
+            <thead>
+                <tr style="border-bottom: 1px solid #000;">
+                    <th>Name</th>
+                    <th>ID Number</th>
+                    <th>Email</th>
+                    <th>Phone Number</th>
+                    <th>Address</th>
+                    <th>Company Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Clients)
+                {
+                    var address = item.Address.Substring(0, Math.Min(item.Address.Length, 25)) + "...";
+                <tr>
+                    <td>@Html.DisplayFor(modelItem => item.Name)</td>
+                    <td>@Html.DisplayFor(modelItem => item.IdNumber)</td>
+                    <td>@Html.DisplayFor(modelItem => item.Email)</td>
+                    <td>@Html.DisplayFor(modelItem => item.PhoneNumber)</td>
+                    <td><span title="@item.Address.Replace(", ", "\r\n")">@Html.DisplayFor(modelItem => address)</span></td>
+                    <td>@Html.DisplayFor(modelItem => item.Company.Name)</td>
+                </tr>
+                <tr>
+                    <td colspan="6" style="border-bottom: 1px solid #000; text-align: right;">
+                        <a class="btn btn-warning" asp-page="./Edit" asp-route-id="@item.Id">Edit</a>
+                        <a class="btn btn-danger" asp-page="./Delete" asp-route-id="@item.Id">Delete</a>
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+
+    </div>
+</div>

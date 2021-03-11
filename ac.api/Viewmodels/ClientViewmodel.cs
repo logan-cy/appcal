@@ -8,6 +8,7 @@ namespace ac.api.Viewmodels
         public int Id { get; set; }
         [Required(ErrorMessage = "The Company ID field is required.")]
         public int CompanyId { get; set; }
+        public CompanyViewmodel Company { get; set; }
         [Required(ErrorMessage = "The Name field is required.")]
         public string Name { get; set; }
         [Required(ErrorMessage = "The Email field is required.")]

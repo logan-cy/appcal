@@ -32,14 +32,23 @@ namespace ac.api.Controllers
         {
             try
             {
-                var clients = await context.Clients.Include(x => x.Company).Select(x => new ClientViewmodel
+                var data = await context.Clients.Include(x => x.Company).ToListAsync();
+                var clients = data.Select(x => new ClientViewmodel
                 {
                     Address = x.Address,
+                    Company = new CompanyViewmodel
+                    {
+                        Address = x.Company.Address,
+                        Id = x.Company.Id,
+                        Name = x.Company.Name
+                    },
                     CompanyId = x.Company.Id,
+                    Email = x.Email,
                     Id = x.Id,
                     IdNumber = x.IdNumber,
-                    Name = x.Name
-                }).ToListAsync();
+                    Name = x.Name,
+                    PhoneNumber = x.PhoneNumber
+                });
 
                 return Ok(clients);
             }
@@ -68,10 +77,18 @@ namespace ac.api.Controllers
                     .Where(x => x.Company.Id == companyId).Select(x => new ClientViewmodel
                     {
                         Address = x.Address,
+                        Company = new CompanyViewmodel
+                        {
+                            Address = x.Company.Address,
+                            Id = x.Company.Id,
+                            Name = x.Company.Name
+                        },
                         CompanyId = x.Company.Id,
+                        Email = x.Email,
                         Id = x.Id,
                         IdNumber = x.IdNumber,
-                        Name = x.Name
+                        Name = x.Name,
+                        PhoneNumber = x.PhoneNumber
                     }).ToListAsync();
 
                 return Ok(divisions);
@@ -105,10 +122,18 @@ namespace ac.api.Controllers
                 var model = new ClientViewmodel
                 {
                     Address = client.Address,
+                    Company = new CompanyViewmodel
+                    {
+                        Address = client.Company.Address,
+                        Id = client.Company.Id,
+                        Name = client.Company.Name
+                    },
                     CompanyId = client.Company.Id,
+                    Email = client.Email,
                     Id = client.Id,
                     IdNumber = client.IdNumber,
-                    Name = client.Name
+                    Name = client.Name,
+                    PhoneNumber = client.PhoneNumber
                 };
 
                 return Ok(model);

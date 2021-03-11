@@ -1,5 +1,5 @@
 ﻿@page
-@model ac.app.Pages.Companies.CreateModel
+@model ac.app.Pages.Products.EditModel
 @{
 }
 <div class="text-center">
@@ -13,7 +13,7 @@
 <div class="card bg-primary">
     <div class="card-header text-white">
         <a class="text-white" asp-page="./Index"><i class="fas fa-angle-left"></i></a>
-        &nbsp;Creating a new Company
+        &nbsp;Updating a Company
     </div>
     <div class="card-body bg-white">
         <form method="post">
@@ -30,7 +30,7 @@
                 <span asp-validation-for="Company.Address" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" /> <a asp-page="Index" class="btn btn-default">Cancel</a>
+                <input type="submit" value="Update" class="btn btn-primary" /> <a asp-page="Index" class="btn btn-default">Cancel</a>
             </div>
         </form>
     </div>
