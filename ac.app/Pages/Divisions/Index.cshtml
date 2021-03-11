@@ -1,0 +1,41 @@
+﻿@page
+@model ac.app.Pages.Divisions.IndexModel
+@{
+    ViewData["Title"] = "Managing Company Divisions";
+}
+<div class="text-center">
+    <h1 class="display-4">
+        <a href="http://healthimpact.health/" target="_blank">
+            <img src="/img/hi-logo.png"
+                 alt="Health Impact" />
+        </a>
+    </h1>
+    <div class="row text-justify">
+        <div class="col-md-12">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Company</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Divisions)
+                    {
+                        <tr>
+                            <td>@Html.DisplayFor(modelItem => item.Name)</td>
+                            <td>@Html.DisplayFor(modelItem => item.Company.Name)</td>
+                            <td>
+                                <a class="btn btn-warning" asp-page="./Edit" asp-route-id="@item.Id">Edit</a>
+                                <a class="btn btn-danger" asp-page="./Delete" asp-route-id="@item.Id">Delete</a>
+                            </td>
+                        </tr>
+
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+

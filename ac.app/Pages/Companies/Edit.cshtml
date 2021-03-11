@@ -1,0 +1,33 @@
+﻿@page
+@model ac.app.Pages.Companies.EditModel
+@{
+}
+<div class="text-center">
+    <h1 class="display-4">
+        <a href="http://healthimpact.health/" target="_blank">
+            <img src="/img/hi-logo.png"
+                 alt="Health Impact" />
+        </a>
+    </h1>
+    <div class="row text-justify">
+        <div class="col-md-6">
+            <form method="post">
+                <input type="hidden" asp-for="Company.Id" />
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <div class="form-group">
+                    <label class="control-label">Name</label>
+                    <input asp-for="Company.Name" class="form-control" />
+                    <span asp-validation-for="Company.Name" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label class="control-label">Address</label>
+                    <input asp-for="Company.Address" class="form-control" />
+                    <span asp-validation-for="Company.Address" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <input type="submit" value="Update" class="btn btn-primary" /> <a asp-page="Index" class="btn btn-default">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

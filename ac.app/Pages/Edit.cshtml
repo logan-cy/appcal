@@ -1,0 +1,103 @@
+@page
+@model EditModel
+@{
+    ViewData["Title"] = "Update appointment";
+}
+
+<div class="text-center">
+    <h1 class="display-4">
+        <a href="http://healthimpact.health/" target="_blank">
+            <img src="/img/hi-logo.png"
+                 alt="Health Impact" />
+        </a>
+    </h1>
+    <div class="row text-justify">
+        <div class="col-md-6">
+            <form method="post">
+                <input type="hidden" asp-for="Appointment.Id" />
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <div class="form-group">
+                    <label class="control-label">Company</label>
+                    <select asp-for="Appointment.CompanyId" asp-items="Model.Companies" class="form-control">
+                        <option value="0">Please select</option>
+                    </select>
+                    <span asp-validation-for="Appointment.CompanyId" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label class="control-label">Client</label>
+                    <select asp-for="Appointment.ClientId" class="form-control">
+                        <option value="0">Please select</option>
+                    </select>
+                    <span asp-validation-for="Appointment.ClientId" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label class="control-label">Start</label>
+                    <input asp-for="Appointment.Start" class="form-control" />
+                    <span asp-validation-for="Appointment.Start" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label class="control-label">End</label>
+                    <input asp-for="Appointment.End" class="form-control" />
+                    <span class="text-info">Leave blank for all day</span>
+                </div>
+                <div class="form-group">
+                    <label class="control-label">Title</label>
+                    <input asp-for="Appointment.Title" class="form-control" />
+                    <span asp-validation-for="Appointment.Title" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label class="control-label">Description</label>
+                    <textarea asp-for="Appointment.Description" class="form-control"></textarea>
+                </div>
+                <div class="form-group">
+                    <input type="submit" value="Update" class="btn btn-primary" /> <a asp-page="Index" class="btn btn-default">Cancel</a>
+                </div>
+            </form>
+            <hr />
+        </div>
+        <div class="col-md-6">
+            <h4 class="text-capitalize">Delete Appointment</h4>
+            <form asp-page-handler="Delete" method="post">
+                <input type="hidden" name="id" value="@Model.Appointment.Id" />
+                <div class="form-group">
+                    <input type="submit" value="Delete" class="btn btn-danger" />
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        const apiurl = "http://localhost:5000/";
+
+        $(function () {
+            const companyId = @Model.Appointment.CompanyId;
+            console.log(`companyId (expected 4) = ${companyId}`);
+            const clientId = @Model.Appointment.ClientId;
+            console.log(`clientId (expected 1) = ${clientId}`);
+            getCompanyClients(companyId, clientId);
+
+            $("#Appointment_CompanyId").on("change", getCompanyClients());
+
+        });
+
+        function getCompanyClients(companyId, clientId) {
+            if (companyId === null) {
+                companyId = $(this).val();
+            }
+
+            $("#Appointment_ClientId").empty();
+            $("#Appointment_ClientId").append("<option value='0'>Select client</option>");
+            $.getJSON(`${apiurl}clients/filter?companyId=${companyId}`, (data) => {
+                $.each(data, function (i, item) {
+                    $("#Appointment_ClientId").append(`<option value="${item.id}">${item.name}</option>`);
+                });
+
+                if (clientId !== null) {
+                    $("#Appointment_ClientId").val(clientId);
+                }
+            });
+        }
+    </script>
+}

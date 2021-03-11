@@ -66,6 +66,12 @@ namespace ac.api.Controllers
                     .Where(x => x.Company.Id == companyId).Select(x => new DivisionViewmodel
                     {
                         CompanyId = x.Company.Id,
+                        Company = new CompanyViewmodel
+                        {
+                            Address = company.Address,
+                            Id = company.Id,
+                            Name = company.Name
+                        },
                         Id = x.Id,
                         Name = x.Name
                     }).ToListAsync();
@@ -101,6 +107,12 @@ namespace ac.api.Controllers
                 var model = new DivisionViewmodel
                 {
                     CompanyId = division.Company.Id,
+                    Company = new CompanyViewmodel
+                    {
+                        Address = division.Company.Address,
+                        Id = division.Company.Id,
+                        Name = division.Company.Name
+                    },
                     Id = division.Id,
                     Name = division.Name
                 };

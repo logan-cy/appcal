@@ -6,20 +6,56 @@
 }
 
 <div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <calendar month="@DateTime.Now.Month" year="@DateTime.Now.Year" events="" />
+    <h1 class="display-4"><a href="http://healthimpact.health/" target="_blank"><img src="/img/hi-logo.png"
+                alt="Health Impact" /></a></h1>
     <div id="calendar"></div>
 </div>
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        var calendarEl = document.getElementById('calendar');
-        var calendar = new FullCalendar.Calendar(calendarEl, {
+        const year = @DateTime.Now.Year;
+        const month = @DateTime.Now.Month;
+        const day = @DateTime.Now.Day;
+
+        const dt = formatDate(new Date(year, month, day));
+
+        let clickCount = 0;
+        const calendarEl = document.getElementById('calendar');
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            customButtons: {
+                newAppButton: {
+                    text: "New Appointment",
+                    click: function () {
+                        location.href = "Create";
+                    }
+                }
+            },
+            headerToolbar: {
+                left: 'prev,next newAppButton',
+                center: 'title',
+                right: 'today dayGridMonth,dayGridWeek,dayGridDay'
+            },
             initialView: 'dayGridMonth',
+            initialDate: `${dt}`,
             editable: true,
-            selectable: true,
+            editable: true,
+            dayMaxEvents: true, // allow "more" link when too many events
             events: "http://localhost:5000/events?companyId=4"
         });
         calendar.render();
     });
+
+    function formatDate(date) {
+        var d = new Date(date),
+            month = '' + d.getMonth(),
+            day = '' + d.getDate(),
+            year = d.getFullYear();
+
+        if (month.length < 2)
+            month = '0' + month;
+        if (day.length < 2)
+            day = '0' + day;
+
+        return [year, month, day].join('-');
+    }
 </script>
