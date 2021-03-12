@@ -41,7 +41,7 @@ namespace ac.app.Pages.ProductSets
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[Companies DeleteModel] OnGet failed");
+                _logger.LogError(ex, "[Product Set DeleteModel] OnGet failed");
             }
         }
 

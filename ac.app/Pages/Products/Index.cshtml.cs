@@ -15,7 +15,7 @@ namespace ac.app.Pages.Products
     public class IndexModel : PageModel
     {
         [BindProperty]
-        public IEnumerable<CompanyViewmodel> Companies { get; set; }
+        public IEnumerable<ProductViewmodel> Products { get; set; }
 
         private readonly ILogger<IndexModel> _logger;
 
@@ -33,17 +33,17 @@ namespace ac.app.Pages.Products
         {
             try
             {
-                Companies = await GetCompaniesAsync();
+                Products = await GetProductsAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[Companies IndexModel] OnGet failed");
+                _logger.LogError(ex, "[Products IndexModel] OnGet failed");
             }
         }
 
-        private async Task<IEnumerable<CompanyViewmodel>> GetCompaniesAsync()
+        private async Task<IEnumerable<ProductViewmodel>> GetProductsAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/products");
 
             var client = clientFactory.CreateClient();
             // LYTODO add authorization bearer token here for login.
@@ -52,15 +52,15 @@ namespace ac.app.Pages.Products
             if (response.IsSuccessStatusCode)
             {
                 using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<List<CompanyViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var companies = result.ToList();
+                var result = await JsonSerializer.DeserializeAsync<List<ProductViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                var products = result.ToList();
 
-                return companies;
+                return products;
             }
             else
             {
-                var companies = Array.Empty<CompanyViewmodel>();
-                return companies;
+                var products = Array.Empty<ProductViewmodel>();
+                return products;
             }
         }
     }

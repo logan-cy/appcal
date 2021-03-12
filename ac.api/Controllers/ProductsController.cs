@@ -32,8 +32,21 @@ namespace ac.api.Controllers
         {
             try
             {
-                var products = await context.Products.Include(x => x.Division).Select(x => new ProductViewmodel
+                var products = await context.Products
+                    .Include(x => x.Division)
+                    .Include(x => x.Division.Company).Select(x => new ProductViewmodel
                 {
+                    Company = new CompanyViewmodel
+                    {
+                        Id = x.Division.Company.Id,
+                        Name = x.Division.Company.Name
+                    },
+                    CompanyId = x.Division.Company.Id,
+                    Division = new DivisionViewmodel
+                    {
+                        Id = x.Division.Id,
+                        Name = x.Division.Name
+                    },
                     DivisionId = x.Division.Id,
                     Id = x.Id,
                     Name = x.Name,
@@ -66,6 +79,17 @@ namespace ac.api.Controllers
                 var products = await context.Products.Include(x => x.Division)
                     .Where(x => x.Division.Id == divisionId).Select(x => new ProductViewmodel
                     {
+                        Company = new CompanyViewmodel
+                        {
+                            Id = x.Division.Company.Id,
+                            Name = x.Division.Company.Name
+                        },
+                        CompanyId = x.Division.Company.Id,
+                        Division = new DivisionViewmodel
+                        {
+                            Id = x.Division.Id,
+                            Name = x.Division.Name
+                        },
                         DivisionId = x.Division.Id,
                         Id = x.Id,
                         Name = x.Name,
@@ -95,13 +119,26 @@ namespace ac.api.Controllers
         {
             try
             {
-                var product = await context.Products.Include(x => x.Division).FirstOrDefaultAsync(x => x.Id == id);
+                var product = await context.Products
+                    .Include(x => x.Division)
+                    .Include(x => x.Division.Company).FirstOrDefaultAsync(x => x.Id == id);
                 if (product == null)
                 {
                     return NotFound(new { message = $"Product with ID {id} was not found." });
                 }
                 var model = new ProductViewmodel
                 {
+                    Company = new CompanyViewmodel
+                    {
+                        Id = product.Division.Company.Id,
+                        Name = product.Division.Company.Name
+                    },
+                    CompanyId = product.Division.Company.Id,
+                    Division = new DivisionViewmodel
+                    {
+                        Id = product.Division.Id,
+                        Name = product.Division.Name
+                    },
                     DivisionId = product.Division.Id,
                     Id = product.Id,
                     Name = product.Name,

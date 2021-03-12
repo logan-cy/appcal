@@ -13,25 +13,58 @@
 <div class="card bg-primary">
     <div class="card-header text-white">
         <a class="text-white" asp-page="./Index"><i class="fas fa-angle-left"></i></a>
-        &nbsp;Creating a new Company
+        &nbsp;Creating a new Product
     </div>
     <div class="card-body bg-white">
         <form method="post">
-            <input type="hidden" asp-for="Company.Id" />
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
                 <label class="control-label">Name</label>
-                <input asp-for="Company.Name" class="form-control" />
-                <span asp-validation-for="Company.Name" class="text-danger"></span>
+                <input asp-for="Product.Name" class="form-control" />
+                <span asp-validation-for="Product.Name" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label class="control-label">Address</label>
-                <input asp-for="Company.Address" class="form-control" />
-                <span asp-validation-for="Company.Address" class="text-danger"></span>
+                <label class="control-label">Company</label>
+                <select asp-for="Product.CompanyId" asp-items="Model.Companies" class="form-control">
+                    <option value="0">Please select</option>
+                </select>
+                <span asp-validation-for="Product.CompanyId" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <input type="submit" value="Update" class="btn btn-primary" /> <a asp-page="Index" class="btn btn-default">Cancel</a>
+                <label class="control-label">Division</label>
+                <select asp-for="Product.DivisionId" asp-items="Model.Companies" class="form-control">
+                    <option value="0">Please select</option>
+                </select>
+                <span asp-validation-for="Product.DivisionId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label class="control-label">Price</label>
+                <input asp-for="Product.Price" class="form-control" />
+                <span asp-validation-for="Product.Price" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" /> <a asp-page="Index" class="btn btn-default">Cancel</a>
             </div>
         </form>
     </div>
 </div>
+
+
+@section scripts {
+    <script>
+        const apiurl = "http://localhost:5000/";
+
+        $(function () {
+            $("#Product_CompanyId").on("change", function () {
+                const companyId = $(this).val();
+                $("#Product_DivisionId").empty();
+                $("#Product_DivisionId").append("<option value='0'>Select division</option>");
+                $.getJSON(`${apiurl}divisions/filter?companyId=${companyId}`, (data) => {
+                    $.each(data, function (i, item) {
+                        $("#Product_DivisionId").append(`<option value="${item.id}">${item.name}</option>`);
+                    });
+                });
+            });
+        });
+    </script>
+}

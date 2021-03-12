@@ -24,16 +24,21 @@
             <thead>
                 <tr>
                     <th>Name</th>
-                    <th>Address</th>
+                    <th>Company</th>
+                    <th>Division</th>
+                    <th>Price</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var item in Model.Companies)
+                @foreach (var item in Model.Products)
                 {
+                    var price = item.Price.ToString("c");
                     <tr>
                         <td>@Html.DisplayFor(modelItem => item.Name)</td>
-                        <td>@Html.DisplayFor(modelItem => item.Address)</td>
+                        <td>@Html.DisplayFor(modelItem => item.Company.Name)</td>
+                        <td>@Html.DisplayFor(modelItem => item.Division.Name)</td>
+                        <td>@Html.DisplayFor(modelItem => price)</td>
                         <td>
                             <a class="btn btn-warning" asp-page="./Edit" asp-route-id="@item.Id">Edit</a>
                             <a class="btn btn-danger" asp-page="./Delete" asp-route-id="@item.Id">Delete</a>

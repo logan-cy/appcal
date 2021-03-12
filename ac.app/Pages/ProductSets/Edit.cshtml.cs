@@ -59,7 +59,7 @@ namespace ac.app.Pages.ProductSets
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[Companies IndexModel] OnGet failed");
+                _logger.LogError(ex, "[Product Set EditModel] OnGet failed");
             }
         }
 
@@ -98,8 +98,9 @@ namespace ac.app.Pages.ProductSets
                     return Page();
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError($"Unable to save product: {ex}", ex);
                 return Page();
             }
         }
