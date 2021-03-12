@@ -14,6 +14,7 @@ using ac.api.Viewmodels;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Text.Json;
 using System.IO;
+using Microsoft.AspNetCore.Http;
 
 namespace ac.app.Pages
 {
@@ -31,13 +32,15 @@ namespace ac.app.Pages
         public string AppointmentErrorMessage { get; private set; }
 
         private readonly IHttpClientFactory clientFactory;
+        private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IConfiguration config;
 
-        public EditModel(ILogger<EditModel> logger, IConfiguration config, IHttpClientFactory clientFactory)
+        public EditModel(ILogger<EditModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
         {
             _logger = logger;
             this.config = config;
             this.clientFactory = clientFactory;
+            this.httpContextAccessor = httpContextAccessor;
         }
 
         public async Task OnGetAsync(int? id)
@@ -71,8 +74,11 @@ namespace ac.app.Pages
                 var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
                 request.Content = content;
 
+                var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
+                var token = System.Text.Encoding.Default.GetString(tokenBytes);
                 var client = clientFactory.CreateClient();
-                // LYTODO add authorization bearer token here for login.
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
                 var response = await client.SendAsync(request);
                 if (!response.IsSuccessStatusCode)
                 {
@@ -99,8 +105,11 @@ namespace ac.app.Pages
             {
                 var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/events/delete?id={id}");
 
+                var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
+                var token = System.Text.Encoding.Default.GetString(tokenBytes);
                 var client = clientFactory.CreateClient();
-                // LYTODO add authorization bearer token here for login.
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
                 var response = await client.SendAsync(request);
                 if (!response.IsSuccessStatusCode)
                 {
@@ -126,8 +135,11 @@ namespace ac.app.Pages
         {
             var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/events/single?id={id}");
 
+            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
+            var token = System.Text.Encoding.Default.GetString(tokenBytes);
             var client = clientFactory.CreateClient();
-            // LYTODO add authorization bearer token here for login.
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
             var response = await client.SendAsync(request);
 
             if (response.IsSuccessStatusCode)
@@ -149,8 +161,11 @@ namespace ac.app.Pages
         {
             var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies");
 
+            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
+            var token = System.Text.Encoding.Default.GetString(tokenBytes);
             var client = clientFactory.CreateClient();
-            // LYTODO add authorization bearer token here for login.
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
             var response = await client.SendAsync(request);
 
             if (response.IsSuccessStatusCode)

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 
 namespace ac.api.Viewmodels
@@ -11,5 +12,11 @@ namespace ac.api.Viewmodels
         public string Password { get; set; }
 
         public bool Remember { get; set; }
+    }
+    public class LoginResultViewmodel
+    {
+        public SignInResult Result { get; set; }
+        public string Username { get; set; }
+        public string Token { get; set; }
     }
 }

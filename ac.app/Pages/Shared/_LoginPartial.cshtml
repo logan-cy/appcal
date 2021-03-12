@@ -1,0 +1,28 @@
+﻿@using Microsoft.AspNetCore.Http;
+@inject IHttpContextAccessor _context;
+@{
+}
+<ul class="navbar-nav">
+    @if (_context.HttpContext.Session.Get("Token") != null)
+    {
+        var username = System.Text.Encoding.Default.GetString(_context.HttpContext.Session.Get("Username"));
+
+        <li class="nav-item">
+            <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">Hello @username!</a>
+        </li>
+        <li class="nav-item">
+            <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
+                <button type="submit" class="nav-link btn btn-link text-dark">Logout</button>
+            </form>
+        </li>
+    }
+    else
+    {
+        <li class="nav-item">
+            <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">Register</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a>
+        </li>
+    }
+</ul>

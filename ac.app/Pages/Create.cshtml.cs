@@ -1,20 +1,17 @@
-using System.Reflection.PortableExecutable;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using ac.api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using ac.api.Data;
-using Microsoft.EntityFrameworkCore;
 using ac.api.Viewmodels;
 using System.Net.Http;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 using System.IO;
+using Microsoft.AspNetCore.Http;
 
 namespace ac.app.Pages
 {
@@ -32,12 +29,14 @@ namespace ac.app.Pages
         public string SaveAppointmentErrorMessage { get; private set; }
 
         private readonly IHttpClientFactory clientFactory;
+        private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IConfiguration config;
 
-        public CreateModel(ILogger<CreateModel> logger, IConfiguration config, IHttpClientFactory clientFactory)
+        public CreateModel(ILogger<CreateModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
         {
             this.config = config;
             this.clientFactory = clientFactory;
+            this.httpContextAccessor = httpContextAccessor;
             _logger = logger;
         }
 
@@ -67,8 +66,11 @@ namespace ac.app.Pages
                 var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
                 request.Content = content;
 
+                var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
+                var token = System.Text.Encoding.Default.GetString(tokenBytes);
                 var client = clientFactory.CreateClient();
-                // LYTODO add authorization bearer token here for login.
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
                 var response = await client.SendAsync(request);
                 if (!response.IsSuccessStatusCode)
                 {
@@ -94,8 +96,11 @@ namespace ac.app.Pages
         {
             var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies");
 
+            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
+            var token = System.Text.Encoding.Default.GetString(tokenBytes);
             var client = clientFactory.CreateClient();
-            // LYTODO add authorization bearer token here for login.
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
             var response = await client.SendAsync(request);
 
             if (response.IsSuccessStatusCode)

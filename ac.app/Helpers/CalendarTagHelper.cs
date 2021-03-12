@@ -5,7 +5,7 @@ using ac.api.Models;
 using Microsoft.AspNetCore.Razor.TagHelpers;
 using System.Xml.Linq;
 
-namespace ac.api.Helpers
+namespace ac.app.Helpers
 {
     [HtmlTargetElement("calendar", TagStructure = TagStructure.NormalOrSelfClosing)]
     public class CalendarTagHelper : TagHelper

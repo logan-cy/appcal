@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ac.api.Viewmodels;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Configuration;
@@ -20,13 +21,15 @@ namespace ac.app.Pages.Divisions
         private readonly ILogger<DeleteModel> _logger;
 
         private readonly IHttpClientFactory clientFactory;
+        private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IConfiguration config;
 
-        public DeleteModel(ILogger<DeleteModel> logger, IConfiguration config, IHttpClientFactory clientFactory)
+        public DeleteModel(ILogger<DeleteModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
         {
             _logger = logger;
             this.config = config;
             this.clientFactory = clientFactory;
+            this.httpContextAccessor = httpContextAccessor;
         }
 
         public async Task OnGetAsync(int? id)
@@ -64,8 +67,11 @@ namespace ac.app.Pages.Divisions
         {
             var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/divisions/delete?id={id}");
 
+            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
+            var token = System.Text.Encoding.Default.GetString(tokenBytes);
             var client = clientFactory.CreateClient();
-            // LYTODO add authorization bearer token here for login.
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
             var response = await client.SendAsync(request);
 
             if (response.IsSuccessStatusCode)
@@ -86,9 +92,12 @@ namespace ac.app.Pages.Divisions
         {
             var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/divisions/delete?id={id}");
 
+            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
+            var token = System.Text.Encoding.Default.GetString(tokenBytes);
             var client = clientFactory.CreateClient();
-            // LYTODO add authorization bearer token here for login.
-            var response = await client.SendAsync(request);
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
+            await client.SendAsync(request);
         }
     }
 }

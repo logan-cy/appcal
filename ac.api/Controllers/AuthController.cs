@@ -17,9 +17,11 @@ using ac.api.Constants;
 using ac.api.Interfaces;
 using ac.api.Models.DTO;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ac.api.Controllers
 {
+    [AllowAnonymous]
     [ApiController]
     [Route("[controller]")]
     public class AuthController : ControllerBase
@@ -66,7 +68,12 @@ namespace ac.api.Controllers
                 }
                 var key = config["Sys:Key"];
                 var token = await TokenHelper.JwtTokenGenerator(user, userManager, key);
-                return Ok(new { result = result, token = token });
+                return Ok(new LoginResultViewmodel
+                {
+                    Result = result,
+                    Token = token,
+                    Username = model.Username
+                });
             }
             catch (Exception ex)
             {

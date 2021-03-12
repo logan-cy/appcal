@@ -5,12 +5,14 @@ using System.Threading.Tasks;
 using ac.api.Data;
 using ac.api.Models;
 using ac.api.Viewmodels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace ac.api.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("[controller]")]
     public class CompaniesController : ControllerBase

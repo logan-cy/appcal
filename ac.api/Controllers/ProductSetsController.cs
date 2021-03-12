@@ -9,9 +9,11 @@ using ac.api.Viewmodels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ac.api.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("[controller]")]
     public class ProductSetsController : ControllerBase

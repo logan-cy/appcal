@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ac.api.Viewmodels;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -27,13 +28,15 @@ namespace ac.app.Pages.Divisions
         private readonly ILogger<CreateModel> _logger;
 
         private readonly IHttpClientFactory clientFactory;
+        private readonly IHttpContextAccessor httpContextAccessor;
         private readonly IConfiguration config;
 
-        public CreateModel(ILogger<CreateModel> logger, IConfiguration config, IHttpClientFactory clientFactory)
+        public CreateModel(ILogger<CreateModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
         {
             _logger = logger;
             this.config = config;
             this.clientFactory = clientFactory;
+            this.httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<IActionResult> OnGetAsync()
@@ -61,8 +64,11 @@ namespace ac.app.Pages.Divisions
                 var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
                 request.Content = content;
 
+                var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
+                var token = System.Text.Encoding.Default.GetString(tokenBytes);
                 var client = clientFactory.CreateClient();
-                // LYTODO add authorization bearer token here for login.
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
                 var response = await client.SendAsync(request);
                 if (!response.IsSuccessStatusCode)
                 {
@@ -88,8 +94,11 @@ namespace ac.app.Pages.Divisions
         {
             var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies");
 
+            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
+            var token = System.Text.Encoding.Default.GetString(tokenBytes);
             var client = clientFactory.CreateClient();
-            // LYTODO add authorization bearer token here for login.
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
             var response = await client.SendAsync(request);
 
             if (response.IsSuccessStatusCode)
