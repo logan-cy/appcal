@@ -12,7 +12,7 @@ namespace ac.api.Helpers
 {
     public static class TokenHelper
     {
-        public static async Task<string> JwtTokenGenerator(IdentityUser userInfo, UserManager<IdentityUser> userManager, string key)
+        public static async Task<string> JwtTokenGenerator(IdentityUser userInfo, UserManager<IdentityUser> userManager, string key, string issuer, string audience)
         {
             var claims = new List<Claim>
             {
@@ -33,7 +33,10 @@ namespace ac.api.Helpers
             {
                 Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.Now.AddDays(1),
-                SigningCredentials = credentials
+                SigningCredentials = credentials,
+                Issuer = issuer,
+                IssuedAt = DateTime.Now,
+                Audience = audience
             };
             var tokenHandler = new JwtSecurityTokenHandler();
             var token = tokenHandler.CreateToken(descriptor);
@@ -41,7 +44,7 @@ namespace ac.api.Helpers
             return tokenHandler.WriteToken(token);
         }
 
-        public static string JwtTokenGenerator<T>(T userInfo, string key)
+        public static string JwtTokenGenerator<T>(T userInfo, string key, string issuer, string audience)
         {
             var json = JsonConvert.SerializeObject(userInfo);
 
@@ -57,7 +60,10 @@ namespace ac.api.Helpers
             {
                 Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.Now.AddDays(1),
-                SigningCredentials = credentials
+                SigningCredentials = credentials,
+                Issuer = issuer,
+                IssuedAt = DateTime.Now,
+                Audience = audience
             };
             var tokenHandler = new JwtSecurityTokenHandler();
             var token = tokenHandler.CreateToken(descriptor);

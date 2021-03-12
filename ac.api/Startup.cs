@@ -62,9 +62,11 @@ namespace ac.api
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuerSigningKey = true,
+                        ValidIssuer = Configuration["Sys:Issuer"],
+                        ValidAudience = Configuration["Sys:Audience"],
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Configuration["Sys:Key"])),
-                        ValidateIssuer = false,
-                        ValidateAudience = false
+                        ValidateIssuer = true,
+                        ValidateAudience = true
                     };
                 });
             services.AddDbContext<ApplicationDbContext>(options =>

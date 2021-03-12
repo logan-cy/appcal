@@ -11,18 +11,50 @@
                  alt="Health Impact" />
         </a>
     </h1>
+    <form asp-page-handler="GetEvents" method="post">
+        <div class="form-row">
+            <div class="col-auto">
+                <label class="control-label">Company</label>
+            </div>
+            <div class="col-auto">
+                <select asp-for="CompanyId" asp-items="Model.Companies" class="form-control">
+                    <option value="0">Please select</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <input type="submit" value="Filter Events" class="btn btn-danger" />
+            </div>
+        </div>
+    </form>
+
     <div id="calendar"></div>
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
+
+    const apiurl = "http://localhost:5000/";
+
+    $(function () {
+        $("#CompanyId").on("change", function () {
+            const companyId = $(this).val();
+            getEvents(companyId);
+            $("#Product_DivisionId").append("<option value='0'>Select division</option>");
+            $.getJSON(`${apiurl}divisions/filter?companyId=${companyId}`, (data) => {
+                $.each(data, function (i, item) {
+                    $("#Product_DivisionId").append(`<option value="${item.id}">${item.name}</option>`);
+                });
+            });
+        });
+    });
+
+    function getEvents(companyId) {
+        // Load the calendar.
         const year = @DateTime.Now.Year;
         const month = @DateTime.Now.Month;
         const day = @DateTime.Now.Day;
 
         const dt = formatDate(new Date(year, month, day));
 
-        let clickCount = 0;
         const calendarEl = document.getElementById('calendar');
         const calendar = new FullCalendar.Calendar(calendarEl, {
             customButtons: {
@@ -43,10 +75,10 @@
             editable: true,
             editable: true,
             dayMaxEvents: true, // allow "more" link when too many events
-            events: "http://localhost:5000/events?companyId=4"
+            events: "?handler=GetEvents"
         });
         calendar.render();
-    });
+    }
 
     function formatDate(date) {
         var d = new Date(date),

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using ac.api.Data;
@@ -38,24 +39,30 @@ namespace ac.api.Controllers
                     return NotFound(new { message = $"Company with ID {companyId} was not found." });
                 }
 
-                var events = await context.Events
-                    .Include(x => x.Company)
-                    .Include(x => x.Client)
-                    .Where(x => x.Company.Id == companyId)
-                    .Select(x => new EventViewmodel
-                    {
-                        AllDay = x.AllDay,
-                        ClientId = x.Client.Id,
-                        CompanyId = x.Company.Id,
-                        Description = x.Description,
-                        End = x.End,
-                        Id = x.Id,
-                        Start = x.Start,
-                        Title = x.Title,
-                        Url = x.Url
-                    }).ToListAsync();
 
-                return Ok(events);
+                var events = context.Events
+                    .Include(x => x.Company)
+                    .Include(x => x.Client).AsQueryable();
+
+                if (companyId >= 1)
+                {
+                    events = events.Where(x => x.Company.Id == companyId);
+                }
+
+                var result = await events.Select(x => new EventViewmodel
+                {
+                    AllDay = x.AllDay,
+                    ClientId = x.Client.Id,
+                    CompanyId = x.Company.Id,
+                    Description = x.Description,
+                    End = x.End,
+                    Id = x.Id,
+                    Start = x.Start,
+                    Title = x.Title,
+                    Url = x.Url
+                }).ToListAsync();
+
+                return Ok(result);
             }
             catch (Exception ex)
             {

@@ -67,7 +67,9 @@ namespace ac.api.Controllers
                     return BadRequest(result);
                 }
                 var key = config["Sys:Key"];
-                var token = await TokenHelper.JwtTokenGenerator(user, userManager, key);
+                var issuer = config["Sys:Issuer"];
+                var audience = config["Sys:Audience"];
+                var token = await TokenHelper.JwtTokenGenerator(user, userManager, key, issuer, audience);
                 return Ok(new LoginResultViewmodel
                 {
                     Result = result,
