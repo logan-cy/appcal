@@ -37,10 +37,10 @@ namespace ac.api
         public void ConfigureServices(IServiceCollection services)
         {
 
-            services.AddControllers(); var identityBuilder = services.AddIdentityCore<IdentityUser>()
-         .AddRoles<IdentityRole>()
-         .AddEntityFrameworkStores<ApplicationDbContext>()
-           .AddDefaultTokenProviders();
+            services.AddControllers();
+            var identityBuilder = services.AddIdentityCore<IdentityUser>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddDefaultTokenProviders();
             identityBuilder.AddSignInManager<SignInManager<IdentityUser>>();
 
             //Default values seems fine for passwords
@@ -53,9 +53,11 @@ namespace ac.api
                 options.Password.RequiredLength = 3;
             });
             services.Configure<SecurityStampValidatorOptions>(options =>
-                {
-                    options.ValidationInterval = TimeSpan.Zero;
-                });
+            {
+                options.ValidationInterval = TimeSpan.Zero;
+            });
+
+            services.AddAuthorization();
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
