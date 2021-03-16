@@ -1,3 +1,4 @@
+using System.Text;
 using System.IO;
 using System;
 using System.Collections.Generic;
@@ -18,6 +19,7 @@ using ac.api.Interfaces;
 using ac.api.Models.DTO;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authorization;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace ac.api.Controllers
 {
@@ -34,10 +36,19 @@ namespace ac.api.Controllers
         private readonly IWebHostEnvironment environment;
         private readonly IEmailService emailService;
         private readonly IOptions<EmailOptionsDTO> emailOptions;
+        private readonly IUserService userService;
 
-        public AuthController(ILogger<AuthController> logger, UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager, ApplicationDbContext context, IConfiguration config, IWebHostEnvironment environment, IEmailService emailService, IOptions<EmailOptionsDTO> emailOptions)
+        public AuthController(ILogger<AuthController> logger, UserManager<IdentityUser> userManager,
+        SignInManager<IdentityUser> signInManager,
+        ApplicationDbContext context,
+        IConfiguration config,
+        IWebHostEnvironment environment,
+        IEmailService emailService,
+        IOptions<EmailOptionsDTO> emailOptions,
+        IUserService userService)
         {
             this.emailOptions = emailOptions;
+            this.userService = userService;
             this.emailService = emailService;
             this.environment = environment;
             this.config = config;
@@ -48,12 +59,16 @@ namespace ac.api.Controllers
         }
 
         /// <summary>
-        /// Log in with the given user credentials 
+        /// Log in with the given user credentials.
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginViewmodel model)
         {
             try
             {
+                var key = config["Sys:Key"];
+                var issuer = config["Sys:Issuer"];
+                var audience = config["Sys:Audience"];
+
                 var user = await userManager.FindByNameAsync(model.Username);
                 // Try to get a user by email if there's no user returned by username.
                 if (user == null)
@@ -61,21 +76,33 @@ namespace ac.api.Controllers
                     user = await userManager.FindByEmailAsync(model.Username);
                 }
 
-                var result = await signInManager.CheckPasswordSignInAsync(user, model.Password, lockoutOnFailure: false);
-                if (!result.Succeeded)
+                var keyBytes = Encoding.ASCII.GetBytes(key);
+                var token = await this.userService.Authenticate(model.Username, model.Password, keyBytes, issuer, audience);
+                if (token == null)
                 {
-                    return BadRequest(result);
+                    return BadRequest();
                 }
-                var key = config["Sys:Key"];
-                var issuer = config["Sys:Issuer"];
-                var audience = config["Sys:Audience"];
-                var token = await TokenHelper.JwtTokenGenerator(user, userManager, key, issuer, audience);
+
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var tokenString = tokenHandler.WriteToken(token);
                 return Ok(new LoginResultViewmodel
                 {
-                    Result = result,
-                    Token = token,
+                    Token = tokenString,
                     Username = model.Username
                 });
+
+                // var result = await signInManager.CheckPasswordSignInAsync(user, model.Password, lockoutOnFailure: false);
+                // if (!result.Succeeded)
+                // {
+                //     return BadRequest(result);
+                // }
+                // var token = await TokenHelper.JwtTokenGenerator(user, userManager, key, issuer, audience);
+                // return Ok(new LoginResultViewmodel
+                // {
+                //     Result = result,
+                //     Token = token,
+                //     Username = model.Username
+                // });
             }
             catch (Exception ex)
             {

@@ -21,6 +21,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using Newtonsoft.Json.Serialization;
 
 namespace ac.api
 {
@@ -36,12 +39,6 @@ namespace ac.api
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-
-            services.AddControllers();
-            var identityBuilder = services.AddIdentityCore<IdentityUser>()
-                .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders();
-            identityBuilder.AddSignInManager<SignInManager<IdentityUser>>();
 
             //Default values seems fine for passwords
             services.Configure<IdentityOptions>(options =>
@@ -59,20 +56,26 @@ namespace ac.api
 
             services.AddAuthorization();
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuerSigningKey = true,
-                        ValidIssuer = Configuration["Sys:Issuer"],
-                        ValidAudience = Configuration["Sys:Audience"],
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Configuration["Sys:Key"])),
-                        ValidateIssuer = true,
-                        ValidateAudience = true
-                    };
-                });
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = Configuration["Sys:Issuer"],
+                    ValidAudience = Configuration["Sys:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Configuration["Sys:Key"])),
+                    ValidateIssuer = true,
+                    ValidateAudience = true
+                };
+            });
+            services.AddControllers();
+            var identityBuilder = services.AddIdentityCore<IdentityUser>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddDefaultTokenProviders();
+            identityBuilder.AddSignInManager<SignInManager<IdentityUser>>();
+
             services.AddDbContext<ApplicationDbContext>(options =>
-              options.UseSqlite(Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlite(Configuration.GetConnectionString("DefaultConnection")));
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "ac.api", Version = "v1" });
@@ -81,7 +84,17 @@ namespace ac.api
             services.AddSingleton<IEmailService, MailjetService>();
             services.Configure<EmailOptionsDTO>(Configuration.GetSection("Mailjet"));
 
+            services.AddScoped<IUserService, UserService>();
+
             services.AddCors();
+
+            // Add framework services.
+            services.AddMvc(options =>
+            {
+                options.RespectBrowserAcceptHeader = true;
+            })
+            //support application/xml
+            .AddXmlDataContractSerializerFormatters();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -100,6 +113,24 @@ namespace ac.api
                     builder.AllowAnyOrigin();
                 });
             }
+
+            app.Use(async (context, next) =>
+            {
+                var principal = context.User as ClaimsPrincipal;
+                var accessToken = principal?.Claims
+                  .FirstOrDefault(c => c.Type == "access_token");
+                if (accessToken != null)
+                {
+                    //_logger.LogDebug(accessToken.Value);
+                }
+                if (context.Request.Path.Value.Contains(";"))
+                {
+                    var left = context.Request.Path.Value.Split(';');
+                    context.Request.Path = new PathString(left[0]);
+                }
+                await next();
+            });
+
             app.UseCors(builder =>
             {
                 builder.WithOrigins("http://localhost:5001");
@@ -112,6 +143,7 @@ namespace ac.api
             app.UseRouting();
 
             app.UseAuthorization();
+            app.UseAuthentication();
 
             app.UseEndpoints(endpoints =>
             {

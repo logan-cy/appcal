@@ -52,6 +52,7 @@ namespace ac.app.Pages.Companies
             var token = System.Text.Encoding.Default.GetString(tokenBytes);
             var client = clientFactory.CreateClient();
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+            request.Headers.Add("Authorization", $"Bearer {token}");
 
             var response = await client.SendAsync(request);
 

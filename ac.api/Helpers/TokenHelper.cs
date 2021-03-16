@@ -32,7 +32,7 @@ namespace ac.api.Helpers
             var descriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.Now.AddDays(1),
+                Expires = DateTime.Now.AddDays(7),
                 SigningCredentials = credentials,
                 Issuer = issuer,
                 IssuedAt = DateTime.Now,
