@@ -10,6 +10,8 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
+using ac.api.Viewmodels;
+using ac.api.Constants;
 
 namespace ac.api.Services
 {
@@ -24,7 +26,7 @@ namespace ac.api.Services
             this.userManager = userManager;
         }
 
-        public async Task<SecurityToken> Authenticate(string username, string password, byte[] key, string issuer, string audience)
+        public async Task<LoginResultViewmodel> Authenticate(string username, string password)
         {
             var user = await userManager.FindByNameAsync(username);
 
@@ -40,22 +42,32 @@ namespace ac.api.Services
             {
                 return null;
             }
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var tokenDescriptor = new SecurityTokenDescriptor
+            var roles = await userManager.GetRolesAsync(user);
+            var userRole = SystemRoles.Admin;
+            foreach (var role in roles)
             {
-                Subject = new ClaimsIdentity(new Claim[]
+                switch (role)
                 {
-                    new Claim(ClaimTypes.Name, user.Id.ToString())
-                }),
-                Expires = DateTime.Now.AddDays(7),
-                Issuer = issuer,
-                IssuedAt = DateTime.Now,
-                Audience = audience,
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha512Signature)
-            };
-            var token = tokenHandler.CreateToken(tokenDescriptor);
+                    case nameof(SystemRoles.Company):
+                        userRole = SystemRoles.Company;
+                        break;
+                    case nameof(SystemRoles.Client):
+                        userRole = SystemRoles.Client;
+                        break;
+                };
+            }
 
-            return token;
+            var result = new LoginResultViewmodel
+            {
+                UserId = user.Id.ToString(),
+                Result = signInResult,
+                Role = userRole,
+                Username = user.Email
+            };
+
+            return result;
+
+            //return token;
         }
     }
 }

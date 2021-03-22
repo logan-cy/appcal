@@ -13,5 +13,8 @@ namespace ac.api.Viewmodels
 
         [Required]
         public string Password { get; set; }
+
+        [Required]
+        public bool IsCompany { get; set; }
     }
 }

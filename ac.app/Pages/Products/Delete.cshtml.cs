@@ -4,10 +4,12 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ac.api.Data;
 using ac.api.Viewmodels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -19,17 +21,12 @@ namespace ac.app.Pages.Products
         public ProductViewmodel Product { get; set; }
 
         private readonly ILogger<DeleteModel> _logger;
+        private readonly ApplicationDbContext context;
 
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IConfiguration config;
-
-        public DeleteModel(ILogger<DeleteModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public DeleteModel(ILogger<DeleteModel> logger, ApplicationDbContext context)
         {
             _logger = logger;
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
+            this.context = context;
         }
 
         public async Task OnGetAsync(int? id)
@@ -65,39 +62,38 @@ namespace ac.app.Pages.Products
 
         private async Task<ProductViewmodel> GetProductAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/products/single?id={id}");
-
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            var product = await context.Products
+                .Include(x => x.Division)
+                .Include(x => x.Division.Company).FirstOrDefaultAsync(x => x.Id == id);
+            var model = new ProductViewmodel
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<ProductViewmodel>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var product = result;
+                Company = new CompanyViewmodel
+                {
+                    Id = product.Division.Company.Id,
+                    Name = product.Division.Company.Name
+                },
+                CompanyId = product.Division.Company.Id,
+                Division = new DivisionViewmodel
+                {
+                    Id = product.Division.Id,
+                    Name = product.Division.Name
+                },
+                DivisionId = product.Division.Id,
+                Duration = product.Duration,
+                Id = product.Id,
+                Name = product.Name,
+                Price = product.Price
+            };
 
-                return product;
-            }
-            else
-            {
-                return null;
-            }
+            return model;
         }
 
         private async Task DeleteProductAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/products/delete?id={id}");
+            var product = await context.Products.FindAsync(id);
 
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            await client.SendAsync(request);
+            context.Products.Remove(product);
+            await context.SaveChangesAsync();
         }
     }
 }

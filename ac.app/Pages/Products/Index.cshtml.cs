@@ -4,10 +4,12 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ac.api.Data;
 using ac.api.Viewmodels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -19,55 +21,58 @@ namespace ac.app.Pages.Products
         public IEnumerable<ProductViewmodel> Products { get; set; }
 
         private readonly ILogger<IndexModel> _logger;
+        private readonly ApplicationDbContext context;
 
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IConfiguration config;
-
-        public IndexModel(ILogger<IndexModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public IndexModel(ILogger<IndexModel> logger, ApplicationDbContext context)
         {
             _logger = logger;
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
+            this.context = context;
         }
 
-        public async Task OnGetAsync()
+        public async Task<IActionResult> OnGetAsync()
         {
             try
             {
+                if (!User.Identity.IsAuthenticated)
+                {
+                    return Redirect("/Account/Login");
+                }
                 Products = await GetProductsAsync();
+                return Page();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[Products IndexModel] OnGet failed");
+
+                return BadRequest();
             }
         }
 
         private async Task<IEnumerable<ProductViewmodel>> GetProductsAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/products");
+            var products = await context.Products
+                .Include(x => x.Division)
+                .Include(x => x.Division.Company).Select(x => new ProductViewmodel
+                {
+                    Company = new CompanyViewmodel
+                    {
+                        Id = x.Division.Company.Id,
+                        Name = x.Division.Company.Name
+                    },
+                    CompanyId = x.Division.Company.Id,
+                    Division = new DivisionViewmodel
+                    {
+                        Id = x.Division.Id,
+                        Name = x.Division.Name
+                    },
+                    DivisionId = x.Division.Id,
+                    Duration = x.Duration,
+                    Id = x.Id,
+                    Name = x.Name,
+                    Price = x.Price
+                }).ToListAsync();
 
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
-            {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<List<ProductViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var products = result.ToList();
-
-                return products;
-            }
-            else
-            {
-                var products = Array.Empty<ProductViewmodel>();
-                return products;
-            }
+            return products;
         }
     }
 }

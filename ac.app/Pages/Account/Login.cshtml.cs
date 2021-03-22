@@ -9,30 +9,23 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
-using System.Net.Http;
-using Microsoft.Extensions.Configuration;
-using ac.api.Viewmodels;
-using System.Text.Json;
-using Microsoft.AspNetCore.Http;
 
 namespace ac.app.Pages.Account
 {
     [AllowAnonymous]
     public class LoginModel : PageModel
     {
+        private readonly SignInManager<IdentityUser> _signInManager;
         private readonly ILogger<LoginModel> _logger;
 
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IConfiguration config;
-
-        public LoginModel(ILogger<LoginModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public LoginModel(SignInManager<IdentityUser> signInManager, ILogger<LoginModel> logger)
         {
+            _signInManager = signInManager;
             _logger = logger;
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
         }
+
+        [BindProperty]
+        public InputModel Input { get; set; }
 
         public IList<AuthenticationScheme> ExternalLogins { get; set; }
 
@@ -41,8 +34,19 @@ namespace ac.app.Pages.Account
         [TempData]
         public string ErrorMessage { get; set; }
 
-        [BindProperty]
-        public LoginViewmodel Input { get; set; }
+        public class InputModel
+        {
+            [Required]
+            [EmailAddress]
+            public string Email { get; set; }
+
+            [Required]
+            [DataType(DataType.Password)]
+            public string Password { get; set; }
+
+            [Display(Name = "Remember me?")]
+            public bool RememberMe { get; set; }
+        }
 
         public async Task OnGetAsync(string returnUrl = null)
         {
@@ -51,59 +55,48 @@ namespace ac.app.Pages.Account
                 ModelState.AddModelError(string.Empty, ErrorMessage);
             }
 
-            returnUrl = returnUrl ?? Url.Content("~/");
+            returnUrl ??= Url.Content("~/");
+
+            // Clear the existing external cookie to ensure a clean login process
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+
+            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
             ReturnUrl = returnUrl;
         }
 
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
-            try
+            returnUrl ??= "/";
+            if (ModelState.IsValid)
             {
-                returnUrl ??= "/";
-                if (ModelState.IsValid)
+                // This doesn't count login failures towards account lockout
+                // To enable password failures to trigger account lockout, set lockoutOnFailure: true
+                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+
+                if (result.Succeeded)
                 {
-                    var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/auth/login");
-
-                    var body = JsonSerializer.Serialize(Input);
-                    var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-                    request.Content = content;
-
-                    var client = clientFactory.CreateClient();
-                    var response = await client.SendAsync(request);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        // User login succeeded, save the auth token from the API
-                        // response in a time-limited cookie.
-                        using var responseStream = await response.Content.ReadAsStreamAsync();
-                        var result = await JsonSerializer.DeserializeAsync<LoginResultViewmodel>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-
-                        var options = new CookieOptions
-                        {
-                            Expires = DateTime.Now.AddDays(7)
-                        };
-                        httpContextAccessor.HttpContext.Session.SetString("Token", result.Token);
-                        httpContextAccessor.HttpContext.Session.SetString("Username", result.Username);
-                        httpContextAccessor.HttpContext.Response.Cookies.Append("Token", result.Token, options);
-                        httpContextAccessor.HttpContext.Response.Cookies.Append("Username", Input.Username, options);
-
-                        _logger.LogInformation("User logged in.");
-                        return LocalRedirect(returnUrl);
-                    }
-
+                    _logger.LogInformation("User logged in.");
+                    return LocalRedirect(returnUrl);
+                }
+                if (result.RequiresTwoFactor)
+                {
+                    return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+                }
+                if (result.IsLockedOut)
+                {
+                    _logger.LogWarning("User account locked out.");
+                    return RedirectToPage("./Lockout");
+                }
+                else
+                {
                     ModelState.AddModelError(string.Empty, "Invalid login attempt.");
                     return Page();
                 }
+            }
 
-                // Model isn't valid.
-                return Page();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Login failed {ex}", ex);
-                ModelState.AddModelError(string.Empty, "Invalid login attempt.");
-                return Page();
-            }
+            // If we got this far, something failed, redisplay form
+            return Page();
         }
     }
 }

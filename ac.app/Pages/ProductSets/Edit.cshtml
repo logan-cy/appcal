@@ -24,6 +24,8 @@
                 <input asp-for="ProductSet.Name" class="form-control" />
                 <span asp-validation-for="ProductSet.Name" class="text-danger"></span>
             </div>
+            @if (!Model.IsCompany)
+            {
             <div class="form-group">
                 <label class="control-label">Company</label>
                 <select asp-for="ProductSet.CompanyId" asp-items="Model.Companies" class="form-control">
@@ -31,6 +33,7 @@
                 </select>
                 <span asp-validation-for="ProductSet.CompanyId" class="text-danger"></span>
             </div>
+            }
             <div class="form-group">
                 <label class="control-label">Division</label>
                 <select asp-for="ProductSet.DivisionId" asp-items="Model.Divisions" class="form-control">
@@ -60,7 +63,7 @@
 
 @section scripts {
     <script>
-        const apiurl = "http://localhost:5000/";
+        const apiurl = "https://hi.api.loganyoung.co.za/";
 
         $(function () {
             const companyId = @Model.ProductSet.CompanyId;
@@ -71,7 +74,7 @@
                 const companyId = $(this).val();
                 $("#ProductSet_DivisionId").empty();
                 $("#ProductSet_DivisionId").append("<option value='0'>Select division</option>");
-                $.getJSON(`${apiurl}divisions/filter?companyId=${companyId}`, (data) => {
+                $.getJSON(`FilterDivisions?companyId=${companyId}`, (data) => {
                     $.each(data, function (i, item) {
                         $("#ProductSet_DivisionId").append(`<option value="${item.id}">${item.name}</option>`);
                     });
@@ -82,7 +85,7 @@
                 const divisionId = $(this).val();
                 var template = $("template#productDiv").html();
                 console.log(template);
-                $.getJSON(`${apiurl}products/filter?divisionId=${divisionId}`, (data) => {
+                $.getJSON(`FilterProducts?divisionId=${divisionId}`, (data) => {
                     $.each(data, function (i, item) {
                         let t = template;
 
@@ -98,7 +101,7 @@
         function getProducts(divisionId) {
             var template = $("template#productDiv").html();
             console.log(template);
-            $.getJSON(`${apiurl}products/filter?divisionId=${divisionId}`, (data) => {
+            $.getJSON(`FilterProducts?divisionId=${divisionId}`, (data) => {
                 $.each(data, function (i, item) {
                     let t = template;
 

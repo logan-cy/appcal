@@ -4,10 +4,12 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ac.api.Data;
 using ac.api.Viewmodels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -19,55 +21,95 @@ namespace ac.app.Pages.ProductSets
         public IEnumerable<ProductSetViewmodel> ProductSets { get; set; }
 
         private readonly ILogger<IndexModel> _logger;
+        private readonly ApplicationDbContext context;
 
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IConfiguration config;
-
-        public IndexModel(ILogger<IndexModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public IndexModel(ILogger<IndexModel> logger, ApplicationDbContext context)
         {
             _logger = logger;
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
+            this.context = context;
         }
 
-        public async Task OnGetAsync()
+        public async Task<IActionResult> OnGetAsync()
         {
             try
             {
+                if (!User.Identity.IsAuthenticated)
+                {
+                    return Redirect("/Account/Login");
+                }
                 ProductSets = await GetProductSetsAsync();
+                return Page();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[Product Sets IndexModel] OnGet failed");
+
+                return BadRequest();
             }
         }
 
         private async Task<IEnumerable<ProductSetViewmodel>> GetProductSetsAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/productsets");
+            var sets = await context.ProductSets
+                .Include(x => x.Division)
+                .Include(x => x.Division.Company)
+                .Include(x => x.Products).ToListAsync();
+            var model = new List<ProductSetViewmodel>();
 
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            // Make sure that the Products list belonging to each set is being built correctly.
+            foreach (var set in sets)
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<List<ProductSetViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var sets = result.ToList();
+                // Create a new set VM for each set in the collection.
+                var productSet = new ProductSetViewmodel
+                {
+                    Company = new CompanyViewmodel
+                    {
+                        Id = set.Division.Company.Id,
+                        Name = set.Division.Company.Name
+                    },
+                    CompanyId = set.Division.Company.Id,
+                    Division = new DivisionViewmodel
+                    {
+                        Id = set.Division.Id,
+                        Name = set.Division.Name
+                    },
+                    DivisionId = set.Division.Id,
+                    Id = set.Id,
+                    Name = set.Name,
+                    Products = new List<ProductViewmodel>()
+                };
+                // Loop through the products and add them to the set.
+                var products = new List<ProductViewmodel>();
+                foreach (var product in set.Products)
+                {
+                    var p = await context.Products
+                    .Include(x => x.Division).Include(x => x.Division.Company).FirstOrDefaultAsync(x => x.Id == product.Id);
+                    products.Add(new ProductViewmodel
+                    {
+                        Company = new CompanyViewmodel
+                        {
+                            Id = p.Division.Company.Id,
+                            Name = p.Division.Company.Name
+                        },
+                        CompanyId = p.Division.Company.Id,
+                        Division = new DivisionViewmodel
+                        {
+                            Id = p.Division.Id,
+                            Name = p.Division.Name
+                        },
+                        DivisionId = p.Division.Id,
+                        Id = p.Id,
+                        Name = p.Name,
+                        Price = p.Price
+                    });
+                }
+                productSet.Products = products;
 
-                return sets;
+                // Add the new VM to the model returned by this endpoint.
+                model.Add(productSet);
             }
-            else
-            {
-                var sets = Array.Empty<ProductSetViewmodel>();
-                return sets;
-            }
+
+            return model;
         }
     }
 }

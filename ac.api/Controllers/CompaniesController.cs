@@ -1,14 +1,25 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
+using ac.api.Constants;
 using ac.api.Data;
+using ac.api.Helpers;
+using ac.api.Interfaces;
 using ac.api.Models;
+using ac.api.Models.DTO;
 using ac.api.Viewmodels;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ac.api.Controllers
 {
@@ -18,12 +29,32 @@ namespace ac.api.Controllers
     public class CompaniesController : ControllerBase
     {
         private readonly ILogger<CompaniesController> _logger;
+        private readonly IConfiguration config;
+        private readonly IWebHostEnvironment environment;
         private readonly ApplicationDbContext context;
+        private readonly IEmailService emailService;
+        private readonly UserManager<IdentityUser> userManager;
+        private readonly SignInManager<IdentityUser> signInManager;
+        private readonly RoleManager<IdentityRole> roleManager;
+        private readonly IOptions<EmailOptionsDTO> emailOptions;
 
-        public CompaniesController(ILogger<CompaniesController> logger, ApplicationDbContext context)
+        public CompaniesController(ILogger<CompaniesController> logger, IConfiguration config,
+            IWebHostEnvironment environment, ApplicationDbContext context,
+            IEmailService emailService,
+            UserManager<IdentityUser> userManager,
+            SignInManager<IdentityUser> signInManager,
+            RoleManager<IdentityRole> roleManager,
+            IOptions<EmailOptionsDTO> emailOptions)
         {
             this.context = context;
+            this.emailService = emailService;
+            this.userManager = userManager;
+            this.signInManager = signInManager;
+            this.roleManager = roleManager;
+            this.emailOptions = emailOptions;
             _logger = logger;
+            this.config = config;
+            this.environment = environment;
         }
 
         /// <summary>
@@ -200,6 +231,111 @@ namespace ac.api.Controllers
                 _logger.LogError($"Unable to delete company", ex);
                 return BadRequest(ex.ToString());
             }
+        }
+
+        [AllowAnonymous]
+        [HttpPost("register")]
+        public async Task<IActionResult> RegisterCompany([FromBody]RegisterCompanyViewmodel model)
+        {
+            try
+            {
+                // As opposed to generating a signed JWT token, just parse
+                // the model to a base64 string and inject it into the token.
+
+                // Convert model to json.
+                var modelJson = JsonSerializer.Serialize(model);
+                // Get bytes of json string.
+                var bytes = Encoding.UTF8.GetBytes(modelJson);
+                // Get base64 of bytes.
+                var model64 = Convert.ToBase64String(bytes);
+
+                var key = config["Sys:Key"];
+                var issuer = config["Sys:Issuer"];
+                var audience = config["Sys:Audience"];
+
+                var token = TokenHelper.JwtTokenGenerator(model64, key, issuer, audience);
+
+                await SendRegisterCompanyEmail(model, model.User.Name, token);
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Unable to register company user", ex);
+                return BadRequest(ex.ToString());
+            }
+        }
+
+        [AllowAnonymous]
+        [HttpPost("confirm")]
+        public async Task<IActionResult> ConfirmCompany([FromBody]RegisterCompanyViewmodel model)
+        {
+            try
+            {
+                // Create the company.
+                var company = new Company
+                {
+                    Address = model.Company.Address,
+                    Name = model.Company.Name
+                };
+                await context.Companies.AddAsync(company);
+                await context.SaveChangesAsync();
+
+                // Register the user account.
+                var user = new IdentityUser
+                {
+                    Email = model.User.Email,
+                    UserName = model.User.Email,
+                    EmailConfirmed = true
+                };
+                var result = await userManager.CreateAsync(user, model.User.Password);
+                if (!result.Succeeded)
+                {
+                    return BadRequest(result);
+                }
+
+                // Assign user to role.
+                var companyRoleName = nameof(SystemRoles.Company);
+                if (!await roleManager.RoleExistsAsync(companyRoleName))
+                {
+                    await roleManager.CreateAsync(new IdentityRole(companyRoleName));
+                }
+                await userManager.AddToRoleAsync(user, companyRoleName);
+
+                // Create a link associating the the user with the company.
+                await context.CompanyUsers.AddAsync(new CompanyUsers
+                {
+                    Company = company,
+                    User = user
+                });
+                await context.SaveChangesAsync();
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Unable to register new company", ex);
+                return BadRequest(ex.ToString());
+            }
+        }
+
+
+        private async Task SendRegisterCompanyEmail(RegisterCompanyViewmodel model, string name, string token)
+        {
+            var filePath = Path.Combine(environment.ContentRootPath, EmailTemplateConstants.USER_REGISTRATION_PATH);
+            using var reader = new StreamReader(filePath);
+            var mailText = await reader.ReadToEndAsync();
+
+            var appBase = config["Sys:AppBase"];
+
+            _ = mailText.Replace("{name}", name);
+            _ = mailText.Replace("{username}", $"{model.User.Email}");
+
+            // Link is the page on the web app, not the api endpoint.
+            var link = $"{appBase}companies/confirm/?token={Uri.EscapeDataString(token)}";
+            mailText = mailText.Replace("{link}", link);
+
+            await emailService.SendAsync(model.User.Email, mailText, "Please confirm your registration - HealthImpact Appointments Portal", emailOptions.Value);
         }
     }
 }

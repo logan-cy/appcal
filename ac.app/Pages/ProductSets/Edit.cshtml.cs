@@ -2,13 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ac.api.Constants;
+using ac.api.Data;
+using ac.api.Models;
 using ac.api.Viewmodels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -27,19 +32,15 @@ namespace ac.app.Pages.ProductSets
 
         public IEnumerable<SelectListItem> Divisions { get; set; }
         public bool GetDivisionsError { get; private set; }
+        public bool IsCompany { get; private set; }
 
         private readonly ILogger<EditModel> _logger;
+        private readonly ApplicationDbContext context;
 
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IConfiguration config;
-
-        public EditModel(ILogger<EditModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public EditModel(ILogger<EditModel> logger, ApplicationDbContext context)
         {
             _logger = logger;
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
+            this.context = context;
         }
 
         public async Task OnGetAsync(int? id)
@@ -49,8 +50,20 @@ namespace ac.app.Pages.ProductSets
                 if (id != null)
                 {
                     _ = int.TryParse(id.ToString(), out int productSetId);
-                    Companies = await GetCompaniesAsync();
-                    Divisions = await GetDivisionsAsync();
+                    if (User.Identity.IsAuthenticated && User.IsInRole(nameof(SystemRoles.Company)))
+                    {
+                        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                        var companyUser = context.CompanyUsers.Include(x => x.Company).Include(x => x.User).First(x => x.User.Id == userId);
+                        if (ProductSet == null)
+                            ProductSet.CompanyId = companyUser.Company.Id;
+
+                        IsCompany = true;
+                    }
+                    else
+                    {
+                        Companies = await GetCompaniesAsync();
+                    }
+                    Divisions = await GetDivisionsAsync(ProductSet.CompanyId);
                     ProductSet = await GetProductSetAsync(productSetId);
 
                     SelectedProducts = new List<int>();
@@ -70,39 +83,40 @@ namespace ac.app.Pages.ProductSets
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/productsets/edit?id={ProductSet.Id}");
-
-                if (ProductSet.Products == null)
+                var division = await context.Divisions.FindAsync(ProductSet.DivisionId);
+                if (division == null)
                 {
-                    ProductSet.Products = new List<ProductViewmodel>();
+                    return NotFound(new { message = $"Company division with ID {ProductSet.DivisionId} was not found." });
                 }
-                foreach (var productId in SelectedProducts)
+
+                var set = await context.ProductSets
+                    .Include(x => x.Division)
+                    .Include(x => x.Products)
+                    .FirstOrDefaultAsync(x => x.Id == ProductSet.Id);
+                set.Division = division;
+                set.Name = ProductSet.Name;
+
+                // Remove all products from the set.
+                var setProducts = set.Products;
+                foreach (var product in setProducts)
                 {
-                    ProductSet.Products.Add(new ProductViewmodel
+                    if (set.Products.Any(x => x.Id == product.Id))
                     {
-                        Id = productId
-                    });
+                        set.Products.Remove(product);
+                    }
                 }
 
-                var body = JsonSerializer.Serialize(ProductSet);
-                var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-                request.Content = content;
-
-                var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-                var token = System.Text.Encoding.Default.GetString(tokenBytes);
-                var client = clientFactory.CreateClient();
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-                var response = await client.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
+                // Add the new selection of products to the set.
+                var products = new List<Product>();
+                foreach (var p in ProductSet.Products)
                 {
-                    return Redirect("Index");
+                    var product = await context.Products.FindAsync(p.Id);
+                    products.Add(product);
                 }
-                else
-                {
-                    return Page();
-                }
+                set.Products = products;
+                await context.SaveChangesAsync();
+
+                return Redirect("./Index");
             }
             catch (Exception ex)
             {
@@ -113,91 +127,174 @@ namespace ac.app.Pages.ProductSets
 
         private async Task<ProductSetViewmodel> GetProductSetAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/productsets/single?id={id}");
+            var set = await context.ProductSets
+                .Include(x => x.Division)
+                .Include(x => x.Division.Company)
+                .Include(x => x.Products).FirstOrDefaultAsync(x => x.Id == id);
 
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            var model = new ProductSetViewmodel
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<ProductSetViewmodel>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var set = result;
+                Company = new CompanyViewmodel
+                {
+                    Id = set.Division.Company.Id,
+                    Name = set.Division.Company.Name
+                },
+                CompanyId = set.Division.Company.Id,
+                Division = new DivisionViewmodel
+                {
+                    Id = set.Division.Id,
+                    Name = set.Division.Name
+                },
+                DivisionId = set.Division.Id,
+                Id = set.Id,
+                Name = set.Name,
+                Products = new List<ProductViewmodel>()
+            };
 
-                return set;
-            }
-            else
+            // Loop through the products and add them to the set.
+            foreach (var product in set.Products)
             {
-                return null;
+                var p = await context.Products.Include(x => x.Division).FirstOrDefaultAsync(x => x.Id == product.Id);
+                model.Products.Add(new ProductViewmodel
+                {
+                    Company = new CompanyViewmodel
+                    {
+                        Id = p.Division.Company.Id,
+                        Name = p.Division.Company.Name
+                    },
+                    CompanyId = p.Division.Company.Id,
+                    Division = new DivisionViewmodel
+                    {
+                        Id = p.Division.Id,
+                        Name = p.Division.Name
+                    },
+                    DivisionId = p.Division.Id,
+                    Id = p.Id,
+                    Name = p.Name,
+                    Price = p.Price
+                });
             }
+
+            return model;
         }
 
         #region Helpers
         private async Task<IEnumerable<SelectListItem>> GetCompaniesAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies");
-
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            var companies = await context.Companies.Select(x => new CompanyViewmodel
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<List<CompanyViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var companies = result.Select(x => new SelectListItem
+                Address = x.Address,
+                Id = x.Id,
+                Name = x.Name
+            }).ToListAsync();
+
+            return companies.Select(x => new SelectListItem
+            {
+                Text = x.Name,
+                Value = x.Id.ToString()
+            });
+        }
+
+        private async Task<IEnumerable<SelectListItem>> GetDivisionsAsync(int companyId)
+        {
+            var divisions = context.Divisions.Include(x => x.Company).AsQueryable();
+
+            if (companyId != 0)
+            {
+                divisions = divisions.Where(x => x.Company.Id == companyId);
+            }
+            
+            var model = await divisions.Select(x => new DivisionViewmodel
+            {
+                CompanyId = x.Company.Id,
+                Company = new CompanyViewmodel
+                {
+                    Address = x.Company.Address,
+                    Id = x.Company.Id,
+                    Name = x.Company.Name
+                },
+                Id = x.Id,
+                Name = x.Name
+            }).ToListAsync();
+
+            return divisions.Select(x => new SelectListItem
+            {
+                Text = x.Name,
+                Value = x.Id.ToString()
+            });
+        }
+
+
+        public async Task<IEnumerable<SelectListItem>> FilterDivisions(int companyId)
+        {
+            try
+            {
+                var company = await context.Companies.FindAsync(companyId);
+                var divisions = await context.Divisions.Include(x => x.Company)
+                    .Where(x => x.Company.Id == companyId).Select(x => new DivisionViewmodel
+                    {
+                        CompanyId = x.Company.Id,
+                        Company = new CompanyViewmodel
+                        {
+                            Address = company.Address,
+                            Id = company.Id,
+                            Name = company.Name
+                        },
+                        Id = x.Id,
+                        Name = x.Name
+                    }).ToListAsync();
+
+                return divisions.Select(x => new SelectListItem
                 {
                     Text = x.Name,
                     Value = x.Id.ToString()
-                }).ToList();
-
-                return companies;
+                });
             }
-            else
+            catch (Exception ex)
             {
-                GetCompaniesError = true;
-                var companies = Array.Empty<SelectListItem>();
+                _logger.LogError($"Unable to filter divisions: {ex}", ex);
 
-                return companies;
+                return null;
             }
         }
 
-        private async Task<IEnumerable<SelectListItem>> GetDivisionsAsync()
+        public async Task<IEnumerable<SelectListItem>> FilterProducts(int divisionId)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/divisions");
-
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            try
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<List<CompanyViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var divisions = result.Select(x => new SelectListItem
+                var division = await context.Divisions.FindAsync(divisionId);
+                var products = await context.Products.Include(x => x.Division)
+                    .Where(x => x.Division.Id == divisionId).Select(x => new ProductViewmodel
+                    {
+                        Company = new CompanyViewmodel
+                        {
+                            Id = x.Division.Company.Id,
+                            Name = x.Division.Company.Name
+                        },
+                        CompanyId = x.Division.Company.Id,
+                        Division = new DivisionViewmodel
+                        {
+                            Id = x.Division.Id,
+                            Name = x.Division.Name
+                        },
+                        DivisionId = x.Division.Id,
+                        Duration = x.Duration,
+                        Id = x.Id,
+                        Name = x.Name,
+                        Price = x.Price
+                    }).ToListAsync();
+
+                return products.Select(x => new SelectListItem
                 {
                     Text = x.Name,
                     Value = x.Id.ToString()
-                }).ToList();
-
-                return divisions;
+                });
             }
-            else
+            catch (Exception ex)
             {
-                GetDivisionsError = true;
-                var divisions = Array.Empty<SelectListItem>();
+                _logger.LogError($"Unable to filter products: {ex}", ex);
 
-                return divisions;
+                return null;
             }
         }
         #endregion

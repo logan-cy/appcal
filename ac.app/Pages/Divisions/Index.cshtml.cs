@@ -4,10 +4,12 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ac.api.Data;
 using ac.api.Viewmodels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -19,55 +21,49 @@ namespace ac.app.Pages.Divisions
         public IEnumerable<DivisionViewmodel> Divisions { get; set; }
 
         private readonly ILogger<IndexModel> _logger;
+        private readonly ApplicationDbContext context;
 
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IConfiguration config;
-
-        public IndexModel(ILogger<IndexModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public IndexModel(ILogger<IndexModel> logger, ApplicationDbContext context)
         {
             _logger = logger;
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
+            this.context = context;
         }
 
-        public async Task OnGetAsync()
+        public async Task<IActionResult> OnGetAsync()
         {
             try
             {
+                if (!User.Identity.IsAuthenticated)
+                {
+                    return Redirect("/Account/Login");
+                }
                 Divisions = await GetDivisionsAsync();
+                return Page();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[Divisions IndexModel] OnGet failed");
+
+                return BadRequest();
             }
         }
 
         private async Task<IEnumerable<DivisionViewmodel>> GetDivisionsAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/divisions");
-
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            var divisions = await context.Divisions.Include(x => x.Company).Select(x => new DivisionViewmodel
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<List<DivisionViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var divisions = result.ToList();
+                CompanyId = x.Company.Id,
+                Company = new CompanyViewmodel
+                {
+                    Address = x.Company.Address,
+                    Id = x.Company.Id,
+                    Name = x.Company.Name
+                },
+                Id = x.Id,
+                Name = x.Name
+            }).ToListAsync();
 
-                return divisions;
-            }
-            else
-            {
-                var divisions = Array.Empty<DivisionViewmodel>();
-                return divisions;
-            }
+            return divisions;
         }
     }
 }

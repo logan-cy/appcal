@@ -13,40 +13,62 @@ using System.Text.Json;
 using System.Net.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using ac.api.Constants;
+using System.Text;
+using ac.api.Data;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace ac.app.Pages
 {
     public class IndexModel : PageModel
     {
         private readonly ILogger<IndexModel> _logger;
-        private readonly IConfiguration config;
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly ApplicationDbContext context;
 
         [BindProperty]
         public int CompanyId { get; set; }
         public IEnumerable<SelectListItem> Companies { get; set; }
+        [BindProperty]
+        public IEnumerable<EventViewmodel> Events { get; set; }
+        [BindProperty]
+        public bool IsAdmin { get; set; }
 
         public string Token { get; private set; }
         public string Username { get; private set; }
 
-        public IndexModel(ILogger<IndexModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public IndexModel(ILogger<IndexModel> logger, ApplicationDbContext context)
         {
             _logger = logger;
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
+            this.context = context;
         }
 
         public async Task<IActionResult> OnGet()
         {
-            var token = httpContextAccessor.HttpContext.Session.Get("Token");
-            if (token == null)
+            if (!User.Identity.IsAuthenticated)
             {
                 return Redirect("~/Account/Login");
             }
 
-            Companies = await GetCompaniesAsync();
+            var companyId = 0;
+            var isAdmin = User.IsInRole(nameof(SystemRoles.Admin));
+            var isClient = User.IsInRole(nameof(SystemRoles.Client));
+            var isCompany = User.IsInRole(nameof(SystemRoles.Company));
+            if (isCompany)
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var companyUser = context.CompanyUsers.Include(x => x.Company).Include(x => x.User).First(x => x.User.Id == userId);
+                companyId = companyUser.Company.Id;
+            }
+
+            if (!isClient)
+            {
+                Events = await GetEventsAsync(companyId);
+                if (isAdmin)
+                {
+                    Companies = await GetCompaniesAsync();
+                }
+            }
             return Page();
         }
 
@@ -54,25 +76,31 @@ namespace ac.app.Pages
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/events?companyId={id}");
+                var events = context.Events
+                    .Include(x => x.Company)
+                    .Include(x => x.Client)
+                    .Include(x => x.Product).AsQueryable();
 
-                var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-                var token = System.Text.Encoding.Default.GetString(tokenBytes);
-                var client = clientFactory.CreateClient();
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-                var response = await client.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
+                if (id >= 1)
                 {
-                    using var responseStream = await response.Content.ReadAsStreamAsync();
-                    var result = await JsonSerializer.DeserializeAsync<List<EventViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                    var evs = result;
-
-                    return new JsonResult(evs);
+                    events = events.Where(x => x.Company.Id == id);
                 }
 
-                return new JsonResult(string.Empty);
+                var result = await events.Select(x => new EventViewmodel
+                {
+                    AllDay = x.AllDay,
+                    ClientId = x.Client.Id,
+                    CompanyId = x.Company.Id,
+                    Description = x.Description,
+                    End = x.End,
+                    Id = x.Id,
+                    ProductId = x.Product.Id,
+                    Start = x.Start,
+                    Title = x.Title,
+                    Url = x.Url
+                }).ToListAsync();
+
+                return new JsonResult(result);
             }
             catch (Exception ex)
             {
@@ -80,39 +108,52 @@ namespace ac.app.Pages
                 var evs = Array.Empty<EventViewmodel>();
 
                 return new JsonResult(evs);
-
             }
+        }
+
+        private async Task<IEnumerable<EventViewmodel>> GetEventsAsync(int companyId = 0)
+        {
+            var events = context.Events
+                .Include(x => x.Company)
+                .Include(x => x.Client)
+                .Include(x => x.Product).AsQueryable();
+
+            if (companyId >= 1)
+            {
+                events = events.Where(x => x.Company.Id == companyId);
+            }
+
+            var result = await events.Select(x => new EventViewmodel
+            {
+                AllDay = x.AllDay,
+                ClientId = x.Client.Id,
+                CompanyId = x.Company.Id,
+                Description = x.Description,
+                End = x.End,
+                Id = x.Id,
+                ProductId = x.Product.Id,
+                Start = x.Start,
+                Title = x.Title,
+                Url = x.Url
+            }).ToListAsync();
+
+            return result;
         }
 
         private async Task<IEnumerable<SelectListItem>> GetCompaniesAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies");
-
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            var companies = await context.Companies.Select(x => new CompanyViewmodel
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<List<CompanyViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var companies = result.Select(x => new SelectListItem
-                {
-                    Text = x.Name,
-                    Value = x.Id.ToString()
-                }).ToList();
+                Address = x.Address,
+                Id = x.Id,
+                Name = x.Name
+            }).ToListAsync();
 
-                return companies;
-            }
-            else
+            return companies.Select(x => new SelectListItem
             {
-                var companies = Array.Empty<SelectListItem>();
-
-                return companies;
-            }
+                Text = x.Name,
+                Value = x.Id.ToString()
+            });
         }
     }
 }

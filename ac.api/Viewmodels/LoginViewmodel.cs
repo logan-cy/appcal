@@ -1,3 +1,4 @@
+using ac.api.Constants;
 using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 
@@ -15,8 +16,11 @@ namespace ac.api.Viewmodels
     }
     public class LoginResultViewmodel
     {
+        public string UserId { get; set; }
         public SignInResult Result { get; set; }
         public string Username { get; set; }
         public string Token { get; set; }
+        public SystemRoles Role { get; set; }
+        public string UserTypeId { get; set; }
     }
 }

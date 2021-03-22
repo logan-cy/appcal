@@ -23,19 +23,27 @@
                 <input asp-for="Product.Name" class="form-control" />
                 <span asp-validation-for="Product.Name" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label class="control-label">Company</label>
-                <select asp-for="Product.CompanyId" asp-items="Model.Companies" class="form-control">
-                    <option value="0">Please select</option>
-                </select>
-                <span asp-validation-for="Product.CompanyId" class="text-danger"></span>
-            </div>
+            @if (!Model.IsCompany)
+            {
+                <div class="form-group">
+                    <label class="control-label">Company</label>
+                    <select asp-for="Product.CompanyId" asp-items="Model.Companies" class="form-control">
+                        <option value="0">Please select</option>
+                    </select>
+                    <span asp-validation-for="Product.CompanyId" class="text-danger"></span>
+                </div>
+            }
             <div class="form-group">
                 <label class="control-label">Division</label>
-                <select asp-for="Product.DivisionId" asp-items="Model.Companies" class="form-control">
+                <select asp-for="Product.DivisionId" asp-items="Model.Divisions" class="form-control">
                     <option value="0">Please select</option>
                 </select>
                 <span asp-validation-for="Product.DivisionId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label class="control-label">Duration</label>
+                <input asp-for="Product.DurationMinutes" class="form-control" />
+                <span asp-validation-for="Product.DurationMinutes" class="text-danger"></span>
             </div>
             <div class="form-group">
                 <label class="control-label">Price</label>
@@ -52,14 +60,14 @@
 
 @section scripts {
     <script>
-        const apiurl = "http://localhost:5000/";
+        const apiurl = "https://hi.api.loganyoung.co.za/";
 
         $(function () {
             $("#Product_CompanyId").on("change", function () {
                 const companyId = $(this).val();
                 $("#Product_DivisionId").empty();
                 $("#Product_DivisionId").append("<option value='0'>Select division</option>");
-                $.getJSON(`${apiurl}divisions/filter?companyId=${companyId}`, (data) => {
+                $.getJSON(`FilterDivisions?companyId=${companyId}`, (data) => {
                     $.each(data, function (i, item) {
                         $("#Product_DivisionId").append(`<option value="${item.id}">${item.name}</option>`);
                     });

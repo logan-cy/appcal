@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ac.api.Data;
 using ac.api.Viewmodels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -19,17 +20,12 @@ namespace ac.app.Pages.Companies
         public CompanyViewmodel Company { get; set; }
 
         private readonly ILogger<EditModel> _logger;
+        private readonly ApplicationDbContext context;
 
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IConfiguration config;
-
-        public EditModel(ILogger<EditModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public EditModel(ILogger<EditModel> logger, ApplicationDbContext context)
         {
             _logger = logger;
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
+            this.context = context;
         }
 
         public async Task OnGetAsync(int? id)
@@ -52,27 +48,17 @@ namespace ac.app.Pages.Companies
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/companies/edit?id={Company.Id}");
-
-                var body = JsonSerializer.Serialize(Company);
-                var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-                request.Content = content;
-
-                var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-                var token = System.Text.Encoding.Default.GetString(tokenBytes);
-                var client = clientFactory.CreateClient();
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-                var response = await client.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
+                var company = await context.Companies.FindAsync(Company.Id);
+                if (company == null)
                 {
-                    return Redirect("Index");
+                    return NotFound(new { message = $"Company with ID {Company.Id} was not found." });
                 }
-                else
-                {
-                    return Page();
-                }
+                company.Address = Company.Address;
+                company.Name = Company.Name;
+
+                await context.SaveChangesAsync();
+
+                return Redirect("./Index");
             }
             catch (Exception)
             {
@@ -82,27 +68,15 @@ namespace ac.app.Pages.Companies
 
         private async Task<CompanyViewmodel> GetCompanyAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies/single?id={id}");
-
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            var company = await context.Companies.FindAsync(id);
+            var model = new CompanyViewmodel
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<CompanyViewmodel>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var company = result;
+                Address = company.Address,
+                Id = company.Id,
+                Name = company.Name
+            };
 
-                return company;
-            }
-            else
-            {
-                return null;
-            }
+            return model;
         }
     }
 }

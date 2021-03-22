@@ -1,0 +1,87 @@
+﻿@page
+@model RegisterModel
+@{
+    ViewData["Title"] = "Register";
+}
+
+<h1>@ViewData["Title"]</h1>
+<hr />
+@if (!Model.IsRegistered)
+{
+    <div class="row">
+        <form class="offset-2 col-md-8" method="post">
+            <div class="company-account">
+                <h4>Create a new company account.</h4>
+                <div asp-validation-summary="All" class="text-danger"></div>
+                <div class="form-group">
+                    <label asp-for="CompanyInput.Name"></label>
+                    <input asp-for="CompanyInput.Name" class="form-control" />
+                    <span asp-validation-for="CompanyInput.Name" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="CompanyInput.Address"></label>
+                    <input asp-for="CompanyInput.Address" class="form-control" />
+                    <span asp-validation-for="CompanyInput.Address" class="text-danger"></span>
+                </div>
+                <a onclick="showUserAccountForm()" class="btn btn-primary">Continue</a>
+                @*<button type="submit" class="btn btn-primary">Register</button>*@
+            </div>
+            <div class="user-account" style="display: none;">
+                <h4>Set up your account.</h4>
+                <div asp-validation-summary="All" class="text-danger"></div>
+                <div class="form-group">
+                    <label asp-for="UserInput.Name"></label>
+                    <input asp-for="UserInput.Name" class="form-control" />
+                    <span asp-validation-for="UserInput.Name" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="UserInput.Email"></label>
+                    <input asp-for="UserInput.Email" class="form-control" />
+                    <span asp-validation-for="UserInput.Email" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="UserInput.Password"></label>
+                    <input asp-for="UserInput.Password" class="form-control" />
+                    <span asp-validation-for="UserInput.Password" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="UserInput.ConfirmPassword"></label>
+                    <input asp-for="UserInput.ConfirmPassword" class="form-control" />
+                    <span asp-validation-for="UserInput.ConfirmPassword" class="text-danger"></span>
+                </div>
+                <button type="submit" class="btn btn-primary">Register</button>
+            </div>
+        </form>
+    </div>
+}
+else
+{
+    <div class="row">
+        <div>
+            <h3 class="text-success">
+                Thank you
+            </h3>
+        </div>
+        <div>
+            <p>
+                Please finalize your registration by clicking on the link that we just emailed to you.
+            </p>
+            <p>
+                <a href="/">Go to home page</a>.
+            </p>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const showUserAccountForm = () => {
+            const companyAccountDiv = document.querySelector(".company-account");
+            const userAccountDiv = document.querySelector(".user-account");
+
+            companyAccountDiv.style.display = "none";
+            userAccountDiv.style.display = "block";
+        }
+    </script>
+}

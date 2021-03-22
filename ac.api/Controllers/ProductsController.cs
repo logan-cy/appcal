@@ -50,6 +50,7 @@ namespace ac.api.Controllers
                         Name = x.Division.Name
                     },
                     DivisionId = x.Division.Id,
+                    Duration = x.Duration,
                     Id = x.Id,
                     Name = x.Name,
                     Price = x.Price
@@ -93,6 +94,7 @@ namespace ac.api.Controllers
                             Name = x.Division.Name
                         },
                         DivisionId = x.Division.Id,
+                        Duration = x.Duration,
                         Id = x.Id,
                         Name = x.Name,
                         Price = x.Price
@@ -142,6 +144,7 @@ namespace ac.api.Controllers
                         Name = product.Division.Name
                     },
                     DivisionId = product.Division.Id,
+                    Duration = product.Duration,
                     Id = product.Id,
                     Name = product.Name,
                     Price = product.Price
@@ -174,6 +177,7 @@ namespace ac.api.Controllers
                 var product = new Product
                 {
                     Division = division,
+                    Duration = model.Duration,
                     Name = model.Name,
                     Price = model.Price
                 };
@@ -210,6 +214,7 @@ namespace ac.api.Controllers
                     return NotFound(new { message = $"Product with ID {id} was not found." });
                 }
                 product.Division = division;
+                product.Duration = model.Duration;
                 product.Name = model.Name;
                 product.Price = model.Price;
 

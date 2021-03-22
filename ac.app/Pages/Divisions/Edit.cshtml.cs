@@ -3,13 +3,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ac.api.Constants;
+using ac.api.Data;
 using ac.api.Viewmodels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -25,18 +29,16 @@ namespace ac.app.Pages.Divisions
         public IEnumerable<SelectListItem> Companies { get; set; }
         public bool GetCompaniesError { get; private set; }
 
+        public bool IsCompany { get; set; }
+        public int CompanyId { get; private set; }
+
         private readonly ILogger<EditModel> _logger;
+        private readonly ApplicationDbContext context;
 
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IConfiguration config;
-
-        public EditModel(ILogger<EditModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public EditModel(ILogger<EditModel> logger, ApplicationDbContext context)
         {
             _logger = logger;
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
+            this.context = context;
         }
 
         public async Task OnGetAsync(int? id)
@@ -45,7 +47,18 @@ namespace ac.app.Pages.Divisions
             {
                 if (id != null)
                 {
-                    Companies = await GetCompaniesAsync();
+                    if (User.Identity.IsAuthenticated && User.IsInRole(nameof(SystemRoles.Company)))
+                    {
+                        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                        var companyUser = context.CompanyUsers.Include(x => x.Company).Include(x => x.User).First(x => x.User.Id == userId);
+
+                        CompanyId = companyUser.Company.Id;
+                        IsCompany = true;
+                    }
+                    else
+                    {
+                        Companies = await GetCompaniesAsync();
+                    }
                     Division = await GetDivisionAsync(id);
                 }
             }
@@ -59,25 +72,29 @@ namespace ac.app.Pages.Divisions
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/divisions/edit?id={Division.Id}");
-
-                var body = JsonSerializer.Serialize(Division);
-                var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-                request.Content = content;
-
-                var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-                var token = System.Text.Encoding.Default.GetString(tokenBytes);
-                var client = clientFactory.CreateClient();
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-                var response = await client.SendAsync(request);
-                if (!response.IsSuccessStatusCode)
+                if (CompanyId == 0)
                 {
-                    using var responseStream = await response.Content.ReadAsStreamAsync();
-                    using var reader = new StreamReader(responseStream);
-                    SaveDivisionErrorMessage = await reader.ReadToEndAsync();
-                    SaveDivisionError = true;
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    var companyUser = context.CompanyUsers.Include(x => x.Company).Include(x => x.User).First(x => x.User.Id == userId);
+
+                    CompanyId = companyUser.Company.Id;
                 }
+
+                var company = await context.Companies.FindAsync(CompanyId);
+                if (company == null)
+                {
+                    return NotFound(new { message = $"Company with ID {Division.CompanyId} was not found." });
+                }
+
+                var division = await context.Divisions.FindAsync(Division.Id);
+                if (division == null)
+                {
+                    return NotFound(new { message = $"Division with ID {Division.Id} was not found." });
+                }
+                division.Company = company;
+                division.Name = Division.Name;
+
+                await context.SaveChangesAsync();
                 return Redirect("Index");
             }
             catch (Exception ex)
@@ -93,60 +110,37 @@ namespace ac.app.Pages.Divisions
         #region Helpers
         private async Task<DivisionViewmodel> GetDivisionAsync(int? id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/divisions/single?id={id}");
-
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            var division = await context.Divisions.Include(x => x.Company).FirstOrDefaultAsync(x => x.Id == id);
+            var model = new DivisionViewmodel
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<DivisionViewmodel>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                CompanyId = division.Company.Id,
+                Company = new CompanyViewmodel
+                {
+                    Address = division.Company.Address,
+                    Id = division.Company.Id,
+                    Name = division.Company.Name
+                },
+                Id = division.Id,
+                Name = division.Name
+            };
 
-                return result;
-            }
-            else
-            {
-                SaveDivisionError = true;
-                SaveDivisionErrorMessage = $"Unable to get division {response.ReasonPhrase}";
-                return null;
-            }
+            return model;
         }
 
         private async Task<IEnumerable<SelectListItem>> GetCompaniesAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies");
-
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            var companies = await context.Companies.Select(x => new CompanyViewmodel
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<List<CompanyViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var companies = result.Select(x => new SelectListItem
-                {
-                    Text = x.Name,
-                    Value = x.Id.ToString()
-                }).ToList();
+                Address = x.Address,
+                Id = x.Id,
+                Name = x.Name
+            }).ToListAsync();
 
-                return companies;
-            }
-            else
+            return companies.Select(x => new SelectListItem
             {
-                GetCompaniesError = true;
-                var companies = Array.Empty<SelectListItem>();
-
-                return companies;
-            }
+                Text = x.Name,
+                Value = x.Id.ToString()
+            });
         }
         #endregion
     }

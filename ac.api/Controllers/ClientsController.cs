@@ -75,7 +75,7 @@ namespace ac.api.Controllers
                 {
                     return NotFound(new { message = $"Company with ID {companyId} was not found." });
                 }
-                var divisions = await context.Clients.Include(x => x.Company)
+                var clients = await context.Clients.Include(x => x.Company)
                     .Where(x => x.Company.Id == companyId).Select(x => new ClientViewmodel
                     {
                         Address = x.Address,
@@ -93,7 +93,7 @@ namespace ac.api.Controllers
                         PhoneNumber = x.PhoneNumber
                     }).ToListAsync();
 
-                return Ok(divisions);
+                return Ok(clients);
             }
             catch (Exception ex)
             {

@@ -12,12 +12,16 @@ using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 using System.IO;
 using Microsoft.AspNetCore.Http;
+using ac.api.Data;
+using ac.api.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace ac.app.Pages
 {
     public class CreateModel : PageModel
     {
         private readonly ILogger<CreateModel> _logger;
+        private readonly ApplicationDbContext context;
 
         public IEnumerable<SelectListItem> Companies { get; set; }
         public bool GetCompaniesError { get; private set; }
@@ -28,22 +32,20 @@ namespace ac.app.Pages
         public bool SaveAppointmentError { get; private set; }
         public string SaveAppointmentErrorMessage { get; private set; }
 
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IConfiguration config;
-
-        public CreateModel(ILogger<CreateModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public CreateModel(ILogger<CreateModel> logger, ApplicationDbContext context)
         {
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
             _logger = logger;
+            this.context = context;
         }
 
         public async Task<IActionResult> OnGetAsync()
         {
             try
             {
+                if (!User.Identity.IsAuthenticated)
+                {
+                    return Redirect("/Account/Login");
+                }
                 Companies = await GetCompaniesAsync();
 
                 return Page();
@@ -59,26 +61,33 @@ namespace ac.app.Pages
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/events/create");
-
-                Appointment.AllDay = Appointment.End == DateTime.MinValue;
-                var body = JsonSerializer.Serialize(Appointment);
-                var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-                request.Content = content;
-
-                var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-                var token = System.Text.Encoding.Default.GetString(tokenBytes);
-                var client = clientFactory.CreateClient();
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-                var response = await client.SendAsync(request);
-                if (!response.IsSuccessStatusCode)
+                var company = await context.Companies.FindAsync(Appointment.CompanyId);
+                if (company == null)
                 {
-                    using var responseStream = await response.Content.ReadAsStreamAsync();
-                    using var reader = new StreamReader(responseStream);
-                    SaveAppointmentErrorMessage = await reader.ReadToEndAsync();
-                    SaveAppointmentError = true;
+                    return NotFound(new { message = $"Company with ID {Appointment.CompanyId} was not found." });
                 }
+                var client = await context.Clients.FindAsync(Appointment.ClientId);
+                if (client == null)
+                {
+                    return NotFound(new { message = $"Client with ID {Appointment.ClientId} was not found." });
+                }
+                var ev = new CalendarEvent
+                {
+                    AllDay = Appointment.AllDay,
+                    Client = client,
+                    Company = company,
+                    Description = Appointment.Description,
+                    End = Appointment.End,
+                    Start = Appointment.Start,
+                    Title = Appointment.Title
+                };
+
+                await context.Events.AddAsync(ev);
+                await context.SaveChangesAsync();
+
+                // Once event is saved, set an edit URL where it can be updated.
+                ev.Url = $"Edit?id={ev.Id}";
+                await context.SaveChangesAsync();
                 return Redirect("Index");
             }
             catch (Exception ex)
@@ -94,33 +103,56 @@ namespace ac.app.Pages
         #region Helpers
         private async Task<IEnumerable<SelectListItem>> GetCompaniesAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies");
-
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            var companies = await context.Companies.Select(x => new CompanyViewmodel
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<List<CompanyViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var companies = result.Select(x => new SelectListItem
+                Address = x.Address,
+                Id = x.Id,
+                Name = x.Name
+            }).ToListAsync();
+
+            return companies.Select(x => new SelectListItem
+            {
+                Text = x.Name,
+                Value = x.Id.ToString()
+            });
+        }
+
+        public async Task<IEnumerable<SelectListItem>> FilterClients(int companyId)
+        {
+            try
+            {
+                var company = await context.Companies.FindAsync(companyId);
+                var clients = await context.Clients.Include(x => x.Company)
+                    .Where(x => x.Company.Id == companyId).Select(x => new ClientViewmodel
+                    {
+                        Address = x.Address,
+                        Company = new CompanyViewmodel
+                        {
+                            Address = x.Company.Address,
+                            Id = x.Company.Id,
+                            Name = x.Company.Name
+                        },
+                        CompanyId = x.Company.Id,
+                        Email = x.Email,
+                        Id = x.Id,
+                        IdNumber = x.IdNumber,
+                        Name = x.Name,
+                        PhoneNumber = x.PhoneNumber
+                    }).ToListAsync();
+
+                return clients.Select(x => new SelectListItem
                 {
                     Text = x.Name,
                     Value = x.Id.ToString()
-                }).ToList();
-
-                return companies;
+                });
             }
-            else
+            catch (Exception ex)
             {
-                GetCompaniesError = true;
-                var companies = Array.Empty<SelectListItem>();
+                _logger.LogError($"Unable to save appointment: {ex}", ex);
+                SaveAppointmentErrorMessage = ex.ToString();
+                SaveAppointmentError = true;
 
-                return companies;
+                return null;
             }
         }
         #endregion

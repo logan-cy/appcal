@@ -4,10 +4,12 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ac.api.Data;
 using ac.api.Viewmodels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -19,17 +21,12 @@ namespace ac.app.Pages.ProductSets
         public ProductSetViewmodel ProductSet { get; set; }
 
         private readonly ILogger<DeleteModel> _logger;
+        private readonly ApplicationDbContext context;
 
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IConfiguration config;
-
-        public DeleteModel(ILogger<DeleteModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public DeleteModel(ILogger<DeleteModel> logger, ApplicationDbContext context)
         {
             _logger = logger;
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
+            this.context = context;
         }
 
         public async Task OnGetAsync(int? id)
@@ -65,39 +62,73 @@ namespace ac.app.Pages.ProductSets
 
         private async Task<ProductSetViewmodel> GetProductSetAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/productsets/single?id={id}");
+            var set = await context.ProductSets
+                .Include(x => x.Division)
+                .Include(x => x.Division.Company)
+                .Include(x => x.Products).FirstOrDefaultAsync(x => x.Id == id);
 
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            var model = new ProductSetViewmodel
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<ProductSetViewmodel>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var set = result;
+                Company = new CompanyViewmodel
+                {
+                    Id = set.Division.Company.Id,
+                    Name = set.Division.Company.Name
+                },
+                CompanyId = set.Division.Company.Id,
+                Division = new DivisionViewmodel
+                {
+                    Id = set.Division.Id,
+                    Name = set.Division.Name
+                },
+                DivisionId = set.Division.Id,
+                Id = set.Id,
+                Name = set.Name,
+                Products = new List<ProductViewmodel>()
+            };
 
-                return set;
-            }
-            else
+            // Loop through the products and add them to the set.
+            foreach (var product in set.Products)
             {
-                return null;
+                var p = await context.Products.Include(x => x.Division).FirstOrDefaultAsync(x => x.Id == product.Id);
+                model.Products.Add(new ProductViewmodel
+                {
+                    Company = new CompanyViewmodel
+                    {
+                        Id = p.Division.Company.Id,
+                        Name = p.Division.Company.Name
+                    },
+                    CompanyId = p.Division.Company.Id,
+                    Division = new DivisionViewmodel
+                    {
+                        Id = p.Division.Id,
+                        Name = p.Division.Name
+                    },
+                    DivisionId = p.Division.Id,
+                    Id = p.Id,
+                    Name = p.Name,
+                    Price = p.Price
+                });
             }
+
+            return model;
         }
 
         private async Task DeleteProductSetAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/productsets/delete?id={id}");
+            var productSet = await context.ProductSets.Include(x => x.Division).Include(x => x.Products).FirstOrDefaultAsync(x => x.Id == id);
 
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+            // Remove all products from the set so as to satisfy FK constraints.
+            var setProducts = productSet.Products;
+            foreach (var product in setProducts)
+            {
+                if (productSet.Products.Any(x => x.Id == product.Id))
+                {
+                    productSet.Products.Remove(product);
+                }
+            }
 
-            await client.SendAsync(request);
+            context.ProductSets.Remove(productSet);
+            await context.SaveChangesAsync();
         }
     }
 }

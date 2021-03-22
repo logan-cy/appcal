@@ -15,12 +15,14 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Text.Json;
 using System.IO;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 
 namespace ac.app.Pages
 {
     public class EditModel : PageModel
     {
         private readonly ILogger<EditModel> _logger;
+        private readonly ApplicationDbContext context;
 
         public IEnumerable<SelectListItem> Companies { get; set; }
         public bool GetCompaniesError { get; private set; }
@@ -31,22 +33,21 @@ namespace ac.app.Pages
         public bool AppointmentError { get; private set; }
         public string AppointmentErrorMessage { get; private set; }
 
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IConfiguration config;
-
-        public EditModel(ILogger<EditModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public EditModel(ILogger<EditModel> logger, ApplicationDbContext context)
         {
             _logger = logger;
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
+            this.context = context;
         }
 
-        public async Task OnGetAsync(int? id)
+        public async Task<IActionResult> OnGetAsync(int? id)
         {
             try
             {
+                if (!User.Identity.IsAuthenticated)
+                {
+                    return Redirect("/Account/Login");
+                }
+
                 if (id == null)
                 {
                     AppointmentError = true;
@@ -54,12 +55,16 @@ namespace ac.app.Pages
                 }
                 Companies = await GetCompaniesAsync();
                 Appointment = await GetAppointmentAsync(id);
+
+                return Page();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[EditModel] OnGet failed");
                 AppointmentError = true;
                 AppointmentErrorMessage = ex.ToString();
+
+                return BadRequest();
             }
         }
 
@@ -67,26 +72,33 @@ namespace ac.app.Pages
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/events/edit?id={Appointment.Id}");
-
-                Appointment.AllDay = Appointment.End == DateTime.MinValue;
-                var body = JsonSerializer.Serialize(Appointment);
-                var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-                request.Content = content;
-
-                var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-                var token = System.Text.Encoding.Default.GetString(tokenBytes);
-                var client = clientFactory.CreateClient();
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-                var response = await client.SendAsync(request);
-                if (!response.IsSuccessStatusCode)
+                var company = await context.Companies.FindAsync(Appointment.CompanyId);
+                if (company == null)
                 {
-                    using var responseStream = await response.Content.ReadAsStreamAsync();
-                    using var reader = new StreamReader(responseStream);
-                    AppointmentErrorMessage = await reader.ReadToEndAsync();
-                    AppointmentError = true;
+                    return NotFound(new { message = $"Company with ID {Appointment.CompanyId} was not found." });
                 }
+                var client = await context.Clients.FindAsync(Appointment.ClientId);
+                if (client == null)
+                {
+                    return NotFound(new { message = $"Client with ID {Appointment.ClientId} was not found." });
+                }
+                var product = await context.Products.FindAsync(Appointment.ProductId);
+                if (product == null)
+                {
+                    return NotFound(new { message = $"Product with ID {Appointment.ProductId} was not found." });
+                }
+
+                var ev = await context.Events.FindAsync(Appointment.Id);
+                ev.AllDay = (Appointment.End == DateTime.MinValue || Appointment.End == Appointment.Start.AddDays(1));
+                ev.Client = client;
+                ev.Company = company;
+                ev.Description = Appointment.Description;
+                ev.End = Appointment.End;
+                ev.Product = product;
+                ev.Start = Appointment.Start;
+                ev.Title = Appointment.Title;
+
+                await context.SaveChangesAsync();
                 return Redirect("Index");
             }
             catch (Exception ex)
@@ -103,27 +115,17 @@ namespace ac.app.Pages
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/events/delete?id={id}");
+                var ev = await context.Events.FindAsync(id);
+                context.Events.Remove(ev);
+                await context.SaveChangesAsync();
 
-                var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-                var token = System.Text.Encoding.Default.GetString(tokenBytes);
-                var client = clientFactory.CreateClient();
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-                var response = await client.SendAsync(request);
-                if (!response.IsSuccessStatusCode)
-                {
-                    using var responseStream = await response.Content.ReadAsStreamAsync();
-                    using var reader = new StreamReader(responseStream);
-                    AppointmentErrorMessage = await reader.ReadToEndAsync();
-                    AppointmentError = true;
-                }
                 return Redirect("Index");
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Unable to delete appointment: {ex}", ex);
                 AppointmentErrorMessage = ex.ToString();
+                ModelState.AddModelError("", $"Unable to delete appointment: {ex}");
                 AppointmentError = true;
 
                 return Page();
@@ -133,59 +135,80 @@ namespace ac.app.Pages
         #region Helpers
         private async Task<EventViewmodel> GetAppointmentAsync(int? id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/events/single?id={id}");
+            var ev = await context.Events
+                .Include(x => x.Company)
+                .Include(x => x.Client)
+                .Include(x => x.Product)
+                .SingleOrDefaultAsync(x => x.Id == id);
 
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            var appointment = new EventViewmodel
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<EventViewmodel>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                AllDay = ev.AllDay,
+                ClientId = ev.Client.Id,
+                CompanyId = ev.Company.Id,
+                Description = ev.Description,
+                End = ev.End,
+                Id = ev.Id,
+                ProductId = ev.Product.Id,
+                Start = ev.Start,
+                Title = ev.Title,
+                Url = ev.Url
+            };
 
-                return result;
-            }
-            else
-            {
-                AppointmentError = true;
-                AppointmentErrorMessage = $"Unable to get appointment {response.ReasonPhrase}";
-                return null;
-            }
+            return appointment;
         }
 
         private async Task<IEnumerable<SelectListItem>> GetCompaniesAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies");
-
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            var companies = await context.Companies.Select(x => new CompanyViewmodel
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<List<CompanyViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var companies = result.Select(x => new SelectListItem
+                Address = x.Address,
+                Id = x.Id,
+                Name = x.Name
+            }).ToListAsync();
+
+            return companies.Select(x => new SelectListItem
+            {
+                Text = x.Name,
+                Value = x.Id.ToString()
+            });
+        }
+        public async Task<IEnumerable<SelectListItem>> FilterClients(int companyId)
+        {
+            try
+            {
+                var company = await context.Companies.FindAsync(companyId);
+                var clients = await context.Clients.Include(x => x.Company)
+                    .Where(x => x.Company.Id == companyId).Select(x => new ClientViewmodel
+                    {
+                        Address = x.Address,
+                        Company = new CompanyViewmodel
+                        {
+                            Address = x.Company.Address,
+                            Id = x.Company.Id,
+                            Name = x.Company.Name
+                        },
+                        CompanyId = x.Company.Id,
+                        Email = x.Email,
+                        Id = x.Id,
+                        IdNumber = x.IdNumber,
+                        Name = x.Name,
+                        PhoneNumber = x.PhoneNumber
+                    }).ToListAsync();
+
+                return clients.Select(x => new SelectListItem
                 {
                     Text = x.Name,
                     Value = x.Id.ToString()
-                }).ToList();
-
-                return companies;
+                });
             }
-            else
+            catch (Exception ex)
             {
-                GetCompaniesError = true;
-                var companies = Array.Empty<SelectListItem>();
+                _logger.LogError($"Unable to save appointment: {ex}", ex);
+                AppointmentErrorMessage = ex.ToString();
+                AppointmentError = true;
 
-                return companies;
+                return null;
             }
         }
         #endregion

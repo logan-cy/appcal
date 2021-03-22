@@ -1,11 +1,9 @@
-﻿@using Microsoft.AspNetCore.Http;
-@inject IHttpContextAccessor _context;
-@{
+﻿@{
 }
 <ul class="navbar-nav">
-    @if (_context.HttpContext.Session.Get("Token") != null)
+    @if (User.Identity.IsAuthenticated)
     {
-        var username = System.Text.Encoding.Default.GetString(_context.HttpContext.Session.Get("Username"));
+        var username = User.Identity.Name;
 
         <li class="nav-item">
             <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">Hello @username!</a>

@@ -68,7 +68,7 @@
 
 @section scripts {
     <script>
-        const apiurl = "http://localhost:5000/";
+        const apiurl = "https://hi.api.loganyoung.co.za/";
 
         $(function () {
             const companyId = @Model.Appointment.CompanyId;
@@ -86,7 +86,7 @@
 
             $("#Appointment_ClientId").empty();
             $("#Appointment_ClientId").append("<option value='0'>Select client</option>");
-            $.getJSON(`${apiurl}clients/filter?companyId=${companyId}`, (data) => {
+            $.getJSON(`FilterClients?companyId=${companyId}`, (data) => {
                 $.each(data, function (i, item) {
                     $("#Appointment_ClientId").append(`<option value="${item.id}">${item.name}</option>`);
                 });

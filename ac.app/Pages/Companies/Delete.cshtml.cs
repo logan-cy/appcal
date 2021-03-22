@@ -4,10 +4,12 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ac.api.Data;
 using ac.api.Viewmodels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -19,17 +21,12 @@ namespace ac.app.Pages.Companies
         public CompanyViewmodel Company { get; set; }
 
         private readonly ILogger<DeleteModel> _logger;
+        private readonly ApplicationDbContext context;
 
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IConfiguration config;
-
-        public DeleteModel(ILogger<DeleteModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public DeleteModel(ILogger<DeleteModel> logger, ApplicationDbContext context)
         {
             _logger = logger;
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
+            this.context = context;
         }
 
         public async Task OnGetAsync(int? id)
@@ -65,39 +62,32 @@ namespace ac.app.Pages.Companies
 
         private async Task<CompanyViewmodel> GetCompanyAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies/single?id={id}");
-
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            var company = await context.Companies.FindAsync(id);
+            var model = new CompanyViewmodel
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<CompanyViewmodel>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var company = result;
+                Address = company.Address,
+                Id = company.Id,
+                Name = company.Name
+            };
 
-                return company;
-            }
-            else
-            {
-                return null;
-            }
+            return model;
         }
 
         private async Task DeleteCompanyAsync(int id)
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/companies/delete?id={id}");
+            var company = await context.Companies.FindAsync(id);
 
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+            // Avoid possible data corruption by deleting products and divisions before deleting the company.
+            var divisions = await context.Divisions.Where(x => x.Company.Id == id).ToListAsync();
+            foreach (var division in divisions)
+            {
+                var products = context.Products.Where(x => x.Division.Id == division.Id);
+                context.Products.RemoveRange(products);
+            }
+            context.Divisions.RemoveRange(divisions);
 
-            await client.SendAsync(request);
+            context.Companies.Remove(company);
+            await context.SaveChangesAsync();
         }
     }
 }

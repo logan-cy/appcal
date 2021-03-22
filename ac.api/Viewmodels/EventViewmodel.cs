@@ -7,6 +7,7 @@ namespace ac.api.Viewmodels
         public int Id { get; set; }
         public int CompanyId { get; set; }
         public int ClientId { get; set; }
+        public int ProductId { get; set; }
         public DateTime Start { get; set; }
         public DateTime End { get; set; }
         public string Title { get; set; }

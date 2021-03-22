@@ -5,6 +5,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ac.api.Data;
+using ac.api.Models;
 using ac.api.Viewmodels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -23,17 +25,12 @@ namespace ac.app.Pages.Companies
         public string SaveCompanyErrorMessage { get; private set; }
 
         private readonly ILogger<CreateModel> _logger;
+        private readonly ApplicationDbContext context;
 
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IConfiguration config;
-
-        public CreateModel(ILogger<CreateModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public CreateModel(ILogger<CreateModel> logger, ApplicationDbContext context)
         {
             _logger = logger;
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
+            this.context = context;
         }
 
         public void OnGet()
@@ -44,25 +41,14 @@ namespace ac.app.Pages.Companies
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/companies/create");
-
-                var body = JsonSerializer.Serialize(Company);
-                var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-                request.Content = content;
-
-                var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-                var token = System.Text.Encoding.Default.GetString(tokenBytes);
-                var client = clientFactory.CreateClient();
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-                var response = await client.SendAsync(request);
-                if (!response.IsSuccessStatusCode)
+                var company = new Company
                 {
-                    using var responseStream = await response.Content.ReadAsStreamAsync();
-                    using var reader = new StreamReader(responseStream);
-                    SaveCompanyErrorMessage = await reader.ReadToEndAsync();
-                    SaveCompanyError = true;
-                }
+                    Address = Company.Address,
+                    Name = Company.Name
+                };
+                await context.Companies.AddAsync(company);
+                await context.SaveChangesAsync();
+
                 return Redirect("Index");
             }
             catch (Exception ex)

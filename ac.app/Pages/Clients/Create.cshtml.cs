@@ -3,13 +3,19 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ac.api.Constants;
+using ac.api.Data;
 using ac.api.Viewmodels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -25,26 +31,34 @@ namespace ac.app.Pages.Clients
 
         public bool SaveClientError { get; private set; }
         public string SaveClientErrorMessage { get; private set; }
+        public int CompanyId { get; private set; }
+        public bool IsCompany { get; set; }
 
         private readonly ILogger<CreateModel> _logger;
+        private readonly ApplicationDbContext context;
 
-        private readonly IHttpClientFactory clientFactory;
-        private readonly IHttpContextAccessor httpContextAccessor;
-        private readonly IConfiguration config;
-
-        public CreateModel(ILogger<CreateModel> logger, IConfiguration config, IHttpClientFactory clientFactory, IHttpContextAccessor httpContextAccessor)
+        public CreateModel(ILogger<CreateModel> logger, ApplicationDbContext context)
         {
             _logger = logger;
-            this.config = config;
-            this.clientFactory = clientFactory;
-            this.httpContextAccessor = httpContextAccessor;
+            this.context = context;
         }
 
         public async Task<IActionResult> OnGet()
         {
             try
             {
-                Companies = await GetCompaniesAsync();
+                if (User.Identity.IsAuthenticated && User.IsInRole(nameof(SystemRoles.Company)))
+                {
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    var companyUser = context.CompanyUsers.Include(x => x.Company).Include(x => x.User).First(x => x.User.Id == userId);
+                    
+                    CompanyId = companyUser.Company.Id;
+                    IsCompany = true;
+                }
+                else
+                {
+                    Companies = await GetCompaniesAsync();
+                }
 
                 return Page();
             }
@@ -59,25 +73,33 @@ namespace ac.app.Pages.Clients
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Post, $"{config["Sys:ApiUrl"]}/clients/create");
-
-                var body = JsonSerializer.Serialize(Client);
-                var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-                request.Content = content;
-
-                var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-                var token = System.Text.Encoding.Default.GetString(tokenBytes);
-                var client = clientFactory.CreateClient();
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-                var response = await client.SendAsync(request);
-                if (!response.IsSuccessStatusCode)
+                if (CompanyId == 0)
                 {
-                    using var responseStream = await response.Content.ReadAsStreamAsync();
-                    using var reader = new StreamReader(responseStream);
-                    SaveClientErrorMessage = await reader.ReadToEndAsync();
-                    SaveClientError = true;
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    var companyUser = context.CompanyUsers.Include(x => x.Company).Include(x => x.User).First(x => x.User.Id == userId);
+
+                    CompanyId = companyUser.Company.Id;
                 }
+
+                var company = await context.Companies.FindAsync(CompanyId);
+                if (company == null)
+                {
+                    ModelState.AddModelError(string.Empty, $"Company with ID {Client.CompanyId} was not found.");
+                    return Page();
+                }
+
+                var client = new ac.api.Models.Client
+                {
+                    Address = Client.Address,
+                    Company = company,
+                    Email = Client.Email,
+                    IdNumber = Client.IdNumber,
+                    Name = Client.Name,
+                    PhoneNumber = Client.PhoneNumber
+                };
+                await context.Clients.AddAsync(client);
+                await context.SaveChangesAsync();
+
                 return Redirect("Index");
             }
             catch (Exception ex)
@@ -93,34 +115,18 @@ namespace ac.app.Pages.Clients
         #region Helpers
         private async Task<IEnumerable<SelectListItem>> GetCompaniesAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{config["Sys:ApiUrl"]}/companies");
-
-            var tokenBytes = httpContextAccessor.HttpContext.Session.Get("Token");
-            var token = System.Text.Encoding.Default.GetString(tokenBytes);
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
+            var companies = await context.Companies.Select(x => new CompanyViewmodel
             {
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                var result = await JsonSerializer.DeserializeAsync<List<CompanyViewmodel>>(responseStream, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                var companies = result.Select(x => new SelectListItem
-                {
-                    Text = x.Name,
-                    Value = x.Id.ToString()
-                }).ToList();
+                Address = x.Address,
+                Id = x.Id,
+                Name = x.Name
+            }).ToListAsync();
 
-                return companies;
-            }
-            else
+            return companies.Select(x => new SelectListItem
             {
-                GetCompaniesError = true;
-                var companies = Array.Empty<SelectListItem>();
-
-                return companies;
-            }
+                Text = x.Name,
+                Value = x.Id.ToString()
+            });
         }
         #endregion
     }

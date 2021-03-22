@@ -15,11 +15,13 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.SqlServer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
+
 using Microsoft.OpenApi.Models;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
@@ -39,7 +41,6 @@ namespace ac.api
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-
             //Default values seems fine for passwords
             services.Configure<IdentityOptions>(options =>
             {
@@ -69,13 +70,15 @@ namespace ac.api
                 };
             });
             services.AddControllers();
-            var identityBuilder = services.AddIdentityCore<IdentityUser>()
+            var identityBuilder = services.AddIdentity<IdentityUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders();
+                .AddDefaultTokenProviders()
+                .AddRoles<IdentityRole>();
             identityBuilder.AddSignInManager<SignInManager<IdentityUser>>();
 
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlite(Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+                //options.UseSqlite(Configuration.GetConnectionString("DefaultConnection")));
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "ac.api", Version = "v1" });
@@ -114,9 +117,12 @@ namespace ac.api
                 });
             }
 
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
+
             app.Use(async (context, next) =>
             {
-                var principal = context.User as ClaimsPrincipal;
+                var principal = context.User;
                 var accessToken = principal?.Claims
                   .FirstOrDefault(c => c.Type == "access_token");
                 if (accessToken != null)

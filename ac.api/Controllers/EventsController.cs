@@ -33,16 +33,10 @@ namespace ac.api.Controllers
         {
             try
             {
-                var company = await context.Companies.FindAsync(companyId);
-                if (company == null)
-                {
-                    return NotFound(new { message = $"Company with ID {companyId} was not found." });
-                }
-
-
                 var events = context.Events
                     .Include(x => x.Company)
-                    .Include(x => x.Client).AsQueryable();
+                    .Include(x => x.Client)
+                    .Include(x => x.Product).AsQueryable();
 
                 if (companyId >= 1)
                 {
@@ -57,6 +51,7 @@ namespace ac.api.Controllers
                     Description = x.Description,
                     End = x.End,
                     Id = x.Id,
+                    ProductId = x.Product.Id,
                     Start = x.Start,
                     Title = x.Title,
                     Url = x.Url
@@ -83,6 +78,7 @@ namespace ac.api.Controllers
                 var ev = await context.Events
                     .Include(x => x.Company)
                     .Include(x => x.Client)
+                    .Include(x => x.Product)
                     .SingleOrDefaultAsync(x => x.Id == id);
 
                 if (ev == null)
@@ -98,6 +94,7 @@ namespace ac.api.Controllers
                     Description = ev.Description,
                     End = ev.End,
                     Id = ev.Id,
+                    ProductId = ev.Product.Id,
                     Start = ev.Start,
                     Title = ev.Title,
                     Url = ev.Url
@@ -169,12 +166,19 @@ namespace ac.api.Controllers
                 {
                     return NotFound(new { message = $"Client with ID {model.ClientId} was not found." });
                 }
+                var product = await context.Products.FindAsync(model.ProductId);
+                if (product == null)
+                {
+                    return NotFound(new { message = $"Product with ID {model.ProductId} was not found." });
+                }
+
                 var ev = await context.Events.FindAsync(model.Id);
                 ev.AllDay = (model.End == DateTime.MinValue || model.End == model.Start.AddDays(1));
                 ev.Client = client;
                 ev.Company = company;
                 ev.Description = model.Description;
                 ev.End = model.End;
+                ev.Product = product;
                 ev.Start = model.Start;
                 ev.Title = model.Title;
 
